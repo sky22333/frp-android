@@ -24,7 +24,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -137,7 +141,7 @@ class MainActivity : ComponentActivity() {
                             onClick = { showAddDialog.value = true }
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Add,
+                                imageVector = Icons.Filled.Add,
                                 contentDescription = "添加配置"
                             )
                         }
@@ -646,7 +650,7 @@ class MainActivity : ComponentActivity() {
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Add,
+                            imageVector = Icons.Filled.Add,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
@@ -660,7 +664,7 @@ class MainActivity : ComponentActivity() {
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Info,
+                            imageVector = Icons.Filled.Info,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
@@ -688,12 +692,12 @@ class MainActivity : ComponentActivity() {
             headerContent = {
                 if (logText.isNotEmpty()) {
                     ActionButton(
-                        icon = Icons.Default.ContentCopy,
+                        icon = Icons.Filled.ContentCopy,
                         contentDescription = "复制日志",
                         onClick = onCopyLog
                     )
                     ActionButton(
-                        icon = Icons.Default.Clear,
+                        icon = Icons.Filled.Clear,
                         contentDescription = "清空日志",
                         onClick = onClearLog,
                         tint = ErrorColor
@@ -713,7 +717,7 @@ class MainActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Description,
+                            imageVector = Icons.Filled.Description,
                             contentDescription = null,
                             modifier = Modifier.size(48.dp),
                             tint = MaterialTheme.colorScheme.outline

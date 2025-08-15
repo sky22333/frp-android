@@ -10,7 +10,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material.icons.filled.Router
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -115,7 +122,7 @@ class AboutActivity : ComponentActivity() {
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Router,
+                        imageVector = Icons.Filled.Router,
                         contentDescription = null,
                         modifier = Modifier.size(40.dp),
                         tint = androidx.compose.ui.graphics.Color.White
@@ -152,19 +159,19 @@ class AboutActivity : ComponentActivity() {
                 )
                 
                 InfoRow(
-                    icon = Icons.Default.PhoneAndroid,
+                    icon = Icons.Filled.PhoneAndroid,
                     label = "应用版本",
                     value = BuildConfig.VERSION_NAME
                 )
                 
                 InfoRow(
-                    icon = Icons.Default.Code,
+                    icon = Icons.Filled.Code,
                     label = "版本代码",
                     value = BuildConfig.VERSION_CODE.toString()
                 )
                 
                 InfoRow(
-                    icon = Icons.Default.Storage,
+                    icon = Icons.Filled.Storage,
                     label = "frp内核版本",
                     value = BuildConfig.FrpVersion
                 )
@@ -185,7 +192,7 @@ class AboutActivity : ComponentActivity() {
                 )
                 
                 LinkItem(
-                    icon = Icons.Default.Code,
+                    icon = Icons.Filled.Code,
                     title = "frp-Android",
                     subtitle = "原frp-Android项目",
                     url = "https://github.com/AceDroidX/frp-Android",
@@ -193,7 +200,7 @@ class AboutActivity : ComponentActivity() {
                 )
                 
                 LinkItem(
-                    icon = Icons.Default.Router,
+                    icon = Icons.Filled.Router,
                     title = "frp",
                     subtitle = "frp官方项目",
                     url = "https://github.com/fatedier/frp",
@@ -216,7 +223,7 @@ class AboutActivity : ComponentActivity() {
                 )
                 
                 FeatureItem(
-                    icon = Icons.Default.FlashOn,
+                    icon = Icons.Filled.FlashOn,
                     title = "高性能",
                     description = "基于Kotlin原生开发"
                 )

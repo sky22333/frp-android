@@ -97,7 +97,7 @@ fun AppLogo(
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            imageVector = Icons.Default.Router,
+            imageVector = Icons.Filled.Router,
             contentDescription = null,
             modifier = Modifier.size((size / 2).dp),
             tint = Color.White

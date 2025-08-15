@@ -5,7 +5,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -104,14 +110,14 @@ fun ConfigCard(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 ActionButton(
-                    icon = Icons.Default.Edit,
+                    icon = Icons.Filled.Edit,
                     contentDescription = "编辑配置",
                     onClick = onEdit,
                     enabled = !isRunning
                 )
                 
                 ActionButton(
-                    icon = Icons.Default.Delete,
+                    icon = Icons.Filled.Delete,
                     contentDescription = "删除配置",
                     onClick = onDelete,
                     enabled = !isRunning,
@@ -144,7 +150,7 @@ fun EmptyConfigState(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Icon(
-            imageVector = Icons.Default.Settings,
+            imageVector = Icons.Filled.Settings,
             contentDescription = null,
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.outline
@@ -168,7 +174,7 @@ fun EmptyConfigState(
             shape = RoundedCornerShape(12.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.Add,
+                imageVector = Icons.Filled.Add,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp)
             )
@@ -245,8 +251,8 @@ private fun ConfigTypeCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = if (type == FrpType.FRPC) Icons.Default.Devices 
-                                 else Icons.Default.Storage,
+                    imageVector = if (type == FrpType.FRPC) Icons.Filled.Devices 
+                                 else Icons.Filled.Storage,
                     contentDescription = null,
                     tint = if (type == FrpType.FRPC) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.size(24.dp)
@@ -267,7 +273,7 @@ private fun ConfigTypeCard(
             }
             
             Icon(
-                imageVector = Icons.Default.ChevronRight,
+                imageVector = Icons.Filled.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
