@@ -17,44 +17,25 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.rememberScrollableState
-import androidx.compose.foundation.gestures.scrollable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.BasicAlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -62,8 +43,11 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import io.github.acedroidx.frp.ui.theme.FrpTheme
+import io.github.acedroidx.frp.ui.theme.*
+import io.github.acedroidx.frp.ui.components.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -76,6 +60,12 @@ class MainActivity : ComponentActivity() {
     private val frpcConfigList = MutableStateFlow<List<FrpConfig>>(emptyList())
     private val frpsConfigList = MutableStateFlow<List<FrpConfig>>(emptyList())
     private val runningConfigList = MutableStateFlow<List<FrpConfig>>(emptyList())
+    private val showAddDialog = MutableStateFlow(false)
+    private val isLoading = MutableStateFlow(false)
+    private val errorMessage = MutableStateFlow<String?>(null)
+    
+    // 添加协程作用域管理
+    private val activityScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private lateinit var preferences: SharedPreferences
 
@@ -91,12 +81,13 @@ class MainActivity : ComponentActivity() {
             mService = binder.getService()
             mBound = true
 
-            mService.lifecycleScope.launch {
+            // 使用Activity的协程作用域，确保在Activity销毁时自动取消
+            activityScope.launch {
                 mService.processThreads.collect { processThreads ->
                     runningConfigList.value = processThreads.keys.toList()
                 }
             }
-            mService.lifecycleScope.launch {
+            activityScope.launch {
                 mService.logText.collect {
                     logText.value = it
                 }
@@ -128,18 +119,30 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             FrpTheme {
-                Scaffold(topBar = {
-                    TopAppBar(title = {
-                        Text("frp for Android - ${BuildConfig.VERSION_NAME}/${BuildConfig.FrpVersion}")
-                    })
-                }) { contentPadding ->
-                    // Screen content
+                Scaffold(
+                    topBar = {
+                        ModernTopAppBar(
+                            title = "frp for Android",
+                            subtitle = "v${BuildConfig.VERSION_NAME}"
+                        )
+                    },
+                    floatingActionButton = {
+                        FloatingActionButton(
+                            onClick = { showAddDialog.value = true },
+                            containerColor = Primary,
+                            contentColor = androidx.compose.ui.graphics.Color.White
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "添加配置"
+                            )
+                        }
+                    }
+                ) { contentPadding ->
                     Box(
                         modifier = Modifier
+                            .fillMaxSize()
                             .padding(contentPadding)
-                            .verticalScroll(rememberScrollState())
-                            .scrollable(orientation = Orientation.Vertical,
-                                state = rememberScrollableState { delta -> 0f })
                     ) {
                         MainContent()
                     }
@@ -158,162 +161,158 @@ class MainActivity : ComponentActivity() {
     fun MainContent() {
         val frpcConfigList by frpcConfigList.collectAsStateWithLifecycle(emptyList())
         val frpsConfigList by frpsConfigList.collectAsStateWithLifecycle(emptyList())
+        val runningConfigList by runningConfigList.collectAsStateWithLifecycle(emptyList())
         val clipboardManager = LocalClipboardManager.current
         val logText by logText.collectAsStateWithLifecycle("")
-        val openDialog = remember { mutableStateOf(false) }
-        Column(
+        val openDialog by showAddDialog.collectAsStateWithLifecycle()
+        val isLogExpanded = remember { mutableStateOf(false) }
+        
+        val allConfigs = frpcConfigList + frpsConfigList
+        val runningCount = runningConfigList.size
+
+        LazyColumn(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp)
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            // 性能优化：预加载更多项目
+            contentPadding = PaddingValues(bottom = 88.dp) // 为FAB留出足够空间
         ) {
-            if (frpcConfigList.isEmpty() && frpsConfigList.isEmpty()) {
-                Text(
-                    stringResource(R.string.no_config),
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center
+            // 状态概览卡片
+            item {
+                StatusOverviewCard(
+                    totalConfigs = allConfigs.size,
+                    runningConfigs = runningCount,
+                    isAutoStartEnabled = isStartup.collectAsStateWithLifecycle(false).value
                 )
             }
-            if (frpcConfigList.isNotEmpty()) {
-                Text("frpc", style = MaterialTheme.typography.titleLarge)
+
+            // 配置列表
+            if (allConfigs.isEmpty()) {
+                item {
+                    EmptyConfigState(
+                        onAddConfig = { showAddDialog.value = true }
+                    )
+                }
+            } else {
+                // frpc 配置
+                if (frpcConfigList.isNotEmpty()) {
+                    item {
+                        SectionHeader(
+                            title = "客户端配置",
+                            subtitle = "${frpcConfigList.size} 个配置"
+                        )
+                    }
+                    items(
+                        items = frpcConfigList,
+                        key = { config -> "${config.type.typeName}_${config.fileName}" }
+                    ) { config ->
+                        ConfigCard(
+                            config = config,
+                            isRunning = runningConfigList.contains(config),
+                            onEdit = { startConfigActivity(config) },
+                            onDelete = { deleteConfig(config) },
+                            onToggle = { if (it) startShell(config) else stopShell(config) }
+                        )
+                    }
+                }
+
+                // frps 配置
+                if (frpsConfigList.isNotEmpty()) {
+                    item {
+                        SectionHeader(
+                            title = "服务端配置",
+                            subtitle = "${frpsConfigList.size} 个配置"
+                        )
+                    }
+                    items(
+                        items = frpsConfigList,
+                        key = { config -> "${config.type.typeName}_${config.fileName}" }
+                    ) { config ->
+                        ConfigCard(
+                            config = config,
+                            isRunning = runningConfigList.contains(config),
+                            onEdit = { startConfigActivity(config) },
+                            onDelete = { deleteConfig(config) },
+                            onToggle = { if (it) startShell(config) else stopShell(config) }
+                        )
+                    }
+                }
             }
-            frpcConfigList.forEach { config -> FrpConfigItem(config) }
-            if (frpsConfigList.isNotEmpty()) {
-                Text("frps", style = MaterialTheme.typography.titleLarge)
-            }
-            frpsConfigList.forEach { config -> FrpConfigItem(config) }
-            HorizontalDivider(thickness = 2.dp, modifier = Modifier.padding(vertical = 16.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(stringResource(R.string.auto_start_switch))
-                Switch(checked = isStartup.collectAsStateWithLifecycle(false).value,
-                    onCheckedChange = {
+
+            // 设置区域
+            item {
+                SettingsSection(
+                    isAutoStartEnabled = isStartup.collectAsStateWithLifecycle(false).value,
+                    onAutoStartChange = {
                         val editor = preferences.edit()
                         editor.putBoolean(PreferencesKey.AUTO_START, it)
                         editor.apply()
                         isStartup.value = it
-                    })
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceAround,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Button(onClick = {
-                    openDialog.value = true
-                }) { Text(stringResource(R.string.addConfigButton)) }
-                Button(onClick = {
-                    startActivity(Intent(this@MainActivity, AboutActivity::class.java))
-                }) { Text(stringResource(R.string.aboutButton)) }
-            }
-            HorizontalDivider(thickness = 2.dp, modifier = Modifier.padding(vertical = 16.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    stringResource(R.string.frp_log), style = MaterialTheme.typography.titleLarge
-                )
-                Button(onClick = { mService.clearLog() }) { Text(stringResource(R.string.deleteButton)) }
-                Button(onClick = {
-                    clipboardManager.setText(AnnotatedString(logText))
-                    // Only show a toast for Android 12 and lower.
-                    if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) Toast.makeText(
-                        this@MainActivity, getString(R.string.copied), Toast.LENGTH_SHORT
-                    ).show()
-                }) { Text(stringResource(R.string.copy)) }
-            }
-            SelectionContainer {
-                Text(
-                    if (logText == "") stringResource(R.string.no_log) else logText,
-                    style = MaterialTheme.typography.bodyMedium.merge(fontFamily = FontFamily.Monospace),
-                    modifier = Modifier.padding(vertical = 12.dp)
+                    },
+                    onAddConfig = { showAddDialog.value = true },
+                    onAbout = { startActivity(Intent(this@MainActivity, AboutActivity::class.java)) }
                 )
             }
-        }
-        if (openDialog.value) {
-            CreateConfigDialog { openDialog.value = false }
-        }
-    }
 
-    @Composable
-    fun FrpConfigItem(config: FrpConfig) {
-        val runningConfigList by runningConfigList.collectAsStateWithLifecycle(emptyList())
-        val isRunning = runningConfigList.contains(config)
-        Row(
-            verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(config.fileName)
-            Spacer(Modifier.weight(1f))
-            IconButton(
-                onClick = { startConfigActivity(config) },
-                enabled = !isRunning,
-                modifier = Modifier.size(24.dp)
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_pencil_24dp),
-                    contentDescription = "编辑"
-                )
-            }
-            IconButton(
-                onClick = { deleteConfig(config) },
-                enabled = !isRunning,
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_baseline_delete_24),
-                    contentDescription = "删除"
-                )
-            }
-            Switch(checked = isRunning, onCheckedChange = {
-                if (it) (startShell(config)) else (stopShell(config))
-            })
-        }
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    @Preview(showBackground = true)
-    fun CreateConfigDialog(onClose: () -> Unit = {}) {
-        BasicAlertDialog(onDismissRequest = { onClose() }) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                shape = RoundedCornerShape(16.dp),
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        stringResource(R.string.create_frp_select),
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceAround,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Button(onClick = { startConfigActivity(FrpType.FRPC);onClose() }) {
-                            Text("frpc")
-                        }
-                        Button(onClick = { startConfigActivity(FrpType.FRPS);onClose() }) {
-                            Text("frps")
+            // 日志区域
+            item {
+                LogSection(
+                    logText = logText,
+                    isExpanded = isLogExpanded.value,
+                    onExpandChange = { isLogExpanded.value = it },
+                    onClearLog = { if (::mService.isInitialized) mService.clearLog() },
+                    onCopyLog = {
+                        clipboardManager.setText(AnnotatedString(logText))
+                        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
+                            Toast.makeText(this@MainActivity, getString(R.string.copied), Toast.LENGTH_SHORT).show()
                         }
                     }
-                }
+                )
             }
         }
+
+        if (openDialog) {
+            ConfigTypeSelector(
+                onSelectType = { type ->
+                    startConfigActivity(type)
+                    showAddDialog.value = false
+                },
+                onDismiss = { showAddDialog.value = false }
+            )
+        }
     }
+
+
 
     override fun onDestroy() {
         super.onDestroy()
+        
+        // 先取消协程，避免在清理过程中继续更新StateFlow
+        activityScope.cancel()
+        
+        // 解绑服务
         if (mBound) {
-            unbindService(connection)
+            try {
+                unbindService(connection)
+            } catch (e: Exception) {
+                Log.w("MainActivity", "Error unbinding service", e)
+            }
             mBound = false
+        }
+        
+        // 清理StateFlow，避免内存泄漏
+        try {
+            isStartup.value = false
+            logText.value = ""
+            frpcConfigList.value = emptyList()
+            frpsConfigList.value = emptyList()
+            runningConfigList.value = emptyList()
+            showAddDialog.value = false
+            isLoading.value = false
+            errorMessage.value = null
+        } catch (e: Exception) {
+            Log.w("MainActivity", "Error clearing StateFlow", e)
         }
     }
 
@@ -345,22 +344,48 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun deleteConfig(config: FrpConfig) {
-        val file = config.getFile(this)
-        if (file.exists()) {
-            file.delete()
+        try {
+            val file = config.getFile(this)
+            if (file.exists() && file.isFile) {
+                val deleted = file.delete()
+                if (deleted) {
+                    Toast.makeText(this, "配置删除成功", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "配置删除失败", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error deleting config", e)
+            Toast.makeText(this, "删除配置时出错: ${e.message}", Toast.LENGTH_SHORT).show()
+        } finally {
+            updateConfigList()
         }
-        updateConfigList()
     }
 
     private fun startConfigActivity(type: FrpType) {
-        val currentDate = Date()
-        val formatter = SimpleDateFormat("yyyy-MM-dd HH.mm.ss", Locale.getDefault())
-        val formattedDateTime = formatter.format(currentDate)
-        val fileName = "$formattedDateTime.toml"
-        val file = File(type.getDir(this), fileName)
-        file.writeBytes(resources.assets.open(type.getConfigAssetsName()).readBytes())
-        val config = FrpConfig(type, fileName)
-        startConfigActivity(config)
+        try {
+            val currentDate = Date()
+            val formatter = SimpleDateFormat("yyyy-MM-dd HH.mm.ss", Locale.getDefault())
+            val formattedDateTime = formatter.format(currentDate)
+            val fileName = "$formattedDateTime.toml"
+            val file = File(type.getDir(this), fileName)
+            
+            // 确保目录存在
+            file.parentFile?.mkdirs()
+            
+            // 安全地复制资源文件
+            resources.assets.open(type.getConfigAssetsName()).use { inputStream ->
+                file.outputStream().use { outputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+            }
+            
+            val config = FrpConfig(type, fileName)
+            startConfigActivity(config)
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error creating config file", e)
+            Toast.makeText(this, "创建配置文件失败: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun startConfigActivity(config: FrpConfig) {
@@ -426,11 +451,37 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun updateConfigList() {
-        frpcConfigList.value = (FrpType.FRPC.getDir(this).list()?.toList() ?: listOf()).map {
-            FrpConfig(FrpType.FRPC, it)
-        }
-        frpsConfigList.value = (FrpType.FRPS.getDir(this).list()?.toList() ?: listOf()).map {
-            FrpConfig(FrpType.FRPS, it)
+        activityScope.launch {
+            try {
+                isLoading.value = true
+                errorMessage.value = null
+                
+                // 在IO线程中执行文件操作
+                val frpcConfigs = withContext(Dispatchers.IO) {
+                    (FrpType.FRPC.getDir(this@MainActivity).list()?.toList() ?: listOf()).map {
+                        FrpConfig(FrpType.FRPC, it)
+                    }
+                }
+                
+                val frpsConfigs = withContext(Dispatchers.IO) {
+                    (FrpType.FRPS.getDir(this@MainActivity).list()?.toList() ?: listOf()).map {
+                        FrpConfig(FrpType.FRPS, it)
+                    }
+                }
+                
+                // 在主线程中更新UI
+                frpcConfigList.value = frpcConfigs
+                frpsConfigList.value = frpsConfigs
+                
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error updating config list", e)
+                errorMessage.value = "更新配置列表失败: ${e.message}"
+                // 设置为空列表以避免崩溃
+                frpcConfigList.value = emptyList()
+                frpsConfigList.value = emptyList()
+            } finally {
+                isLoading.value = false
+            }
         }
 
         // 检查自启动列表中是否含有已经删除的配置
@@ -456,3 +507,244 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+  
+  @Composable
+    fun StatusOverviewCard(
+        totalConfigs: Int,
+        runningConfigs: Int,
+        isAutoStartEnabled: Boolean
+    ) {
+        ModernCard {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "frp for Android",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    InfoChip(
+                        text = "v${BuildConfig.VERSION_NAME}",
+                        color = Primary
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    StatusItem(
+                        title = "总配置",
+                        value = totalConfigs.toString(),
+                        color = InfoColor
+                    )
+                    StatusItem(
+                        title = "运行中",
+                        value = runningConfigs.toString(),
+                        color = if (runningConfigs > 0) SuccessColor else MaterialTheme.colorScheme.outline
+                    )
+                    StatusItem(
+                        title = "自启动",
+                        value = if (isAutoStartEnabled) "开启" else "关闭",
+                        color = if (isAutoStartEnabled) SuccessColor else WarningColor
+                    )
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun StatusItem(
+        title: String,
+        value: String,
+        color: androidx.compose.ui.graphics.Color
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            // 尝试将value转换为数字以使用动画计数器
+            val numericValue = value.toIntOrNull()
+            if (numericValue != null) {
+                AnimatedCounter(
+                    targetValue = numericValue,
+                    style = MaterialTheme.typography.headlineMedium.copy(color = color)
+                )
+            } else {
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = color
+                )
+            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+
+    @Composable
+    fun SettingsSection(
+        isAutoStartEnabled: Boolean,
+        onAutoStartChange: (Boolean) -> Unit,
+        onAddConfig: () -> Unit,
+        onAbout: () -> Unit
+    ) {
+        ModernCard {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "设置",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "开机自启",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "系统启动时自动运行已配置的服务",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = isAutoStartEnabled,
+                        onCheckedChange = onAutoStartChange,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = SuccessColor,
+                            checkedTrackColor = SuccessColor.copy(alpha = 0.5f)
+                        )
+                    )
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    GradientButton(
+                        onClick = onAddConfig,
+                        text = "添加配置",
+                        icon = Icons.Default.Add,
+                        modifier = Modifier.weight(1f)
+                    )
+                    
+                    OutlinedButton(
+                        onClick = onAbout,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("关于")
+                    }
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun LogSection(
+        logText: String,
+        isExpanded: Boolean,
+        onExpandChange: (Boolean) -> Unit,
+        onClearLog: () -> Unit,
+        onCopyLog: () -> Unit
+    ) {
+        ExpandableCard(
+            title = "运行日志",
+            subtitle = if (logText.isEmpty()) "暂无日志" else "点击展开查看详细日志",
+            isExpanded = isExpanded,
+            onExpandChange = onExpandChange,
+            headerContent = {
+                if (logText.isNotEmpty()) {
+                    ActionButton(
+                        icon = Icons.Default.ContentCopy,
+                        contentDescription = "复制日志",
+                        onClick = onCopyLog
+                    )
+                    ActionButton(
+                        icon = Icons.Default.Clear,
+                        contentDescription = "清空日志",
+                        onClick = onClearLog,
+                        tint = ErrorColor
+                    )
+                }
+            }
+        ) {
+            if (logText.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Description,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.outline
+                        )
+                        Text(
+                            text = "暂无日志输出",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else {
+                // 限制日志长度以避免内存问题
+                val truncatedLogText = remember(logText) {
+                    val lines = logText.lines()
+                    if (lines.size > 1000) {
+                        "...(显示最近1000行)\n" + lines.takeLast(1000).joinToString("\n")
+                    } else {
+                        logText
+                    }
+                }
+                
+                SelectionContainer {
+                    Text(
+                        text = truncatedLogText,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = FontFamily.Monospace
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(12.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
