@@ -67,6 +67,8 @@ class MainActivity : ComponentActivity() {
     private val frpsConfigList = MutableStateFlow<List<FrpConfig>>(emptyList())
     private val runningConfigList = MutableStateFlow<List<FrpConfig>>(emptyList())
     private val showAddDialog = MutableStateFlow(false)
+    private val showDeleteDialog = MutableStateFlow(false)
+    private val configToDelete = MutableStateFlow<FrpConfig?>(null)
     private val isLoading = MutableStateFlow(false)
     private val errorMessage = MutableStateFlow<String?>(null)
     
@@ -173,6 +175,8 @@ class MainActivity : ComponentActivity() {
         val clipboardManager = LocalClipboardManager.current
         val logText by logText.collectAsStateWithLifecycle("")
         val openDialog by showAddDialog.collectAsStateWithLifecycle()
+        val showDeleteConfirm by showDeleteDialog.collectAsStateWithLifecycle()
+        val deleteConfig by configToDelete.collectAsStateWithLifecycle()
         val isLogExpanded = remember { mutableStateOf(false) }
         
         val allConfigs = frpcConfigList + frpsConfigList
@@ -219,7 +223,10 @@ class MainActivity : ComponentActivity() {
                             config = config,
                             isRunning = runningConfigList.contains(config),
                             onEdit = { startConfigActivity(config) },
-                            onDelete = { deleteConfig(config) },
+                            onDelete = { 
+                                configToDelete.value = config
+                                showDeleteDialog.value = true
+                            },
                             onToggle = { if (it) startShell(config) else stopShell(config) }
                         )
                     }
@@ -241,7 +248,10 @@ class MainActivity : ComponentActivity() {
                             config = config,
                             isRunning = runningConfigList.contains(config),
                             onEdit = { startConfigActivity(config) },
-                            onDelete = { deleteConfig(config) },
+                            onDelete = { 
+                                configToDelete.value = config
+                                showDeleteDialog.value = true
+                            },
                             onToggle = { if (it) startShell(config) else stopShell(config) }
                         )
                     }
@@ -289,6 +299,21 @@ class MainActivity : ComponentActivity() {
                 onDismiss = { showAddDialog.value = false }
             )
         }
+
+        if (showDeleteConfirm && deleteConfig != null) {
+            DeleteConfirmDialog(
+                configName = deleteConfig!!.fileName.removeSuffix(".toml"),
+                onConfirm = {
+                    deleteConfig(deleteConfig!!)
+                    showDeleteDialog.value = false
+                    configToDelete.value = null
+                },
+                onDismiss = {
+                    showDeleteDialog.value = false
+                    configToDelete.value = null
+                }
+            )
+        }
     }
 
 
@@ -317,6 +342,8 @@ class MainActivity : ComponentActivity() {
             frpsConfigList.value = emptyList()
             runningConfigList.value = emptyList()
             showAddDialog.value = false
+            showDeleteDialog.value = false
+            configToDelete.value = null
             isLoading.value = false
             errorMessage.value = null
         } catch (e: Exception) {
@@ -370,12 +397,24 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun generateConfigFileName(type: FrpType): String {
+        val existingFiles = type.getDir(this).listFiles()?.map { it.name } ?: emptyList()
+        val prefix = type.typeName.lowercase()
+        
+        // 找到下一个可用的编号
+        var counter = 1
+        var fileName: String
+        do {
+            fileName = "$prefix-$counter.toml"
+            counter++
+        } while (existingFiles.contains(fileName))
+        
+        return fileName
+    }
+
     private fun startConfigActivity(type: FrpType) {
         try {
-            val currentDate = Date()
-            val formatter = SimpleDateFormat("yyyy-MM-dd HH.mm.ss", Locale.getDefault())
-            val formattedDateTime = formatter.format(currentDate)
-            val fileName = "$formattedDateTime.toml"
+            val fileName = generateConfigFileName(type)
             val file = File(type.getDir(this), fileName)
             
             // 确保目录存在
@@ -749,4 +788,64 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }}
+    }
+
+    @Composable
+    fun DeleteConfirmDialog(
+        configName: String,
+        onConfirm: () -> Unit,
+        onDismiss: () -> Unit
+    ) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = {
+                Text(
+                    text = "确认删除",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "您确定要删除此配置吗？",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = configName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "此操作无法撤销。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ErrorColor
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = onConfirm,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = ErrorColor
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("删除", color = androidx.compose.ui.graphics.Color.White)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("取消")
+                }
+            },
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+}
