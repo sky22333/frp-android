@@ -397,24 +397,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun generateConfigFileName(type: FrpType): String {
-        val existingFiles = type.getDir(this).listFiles()?.map { it.name } ?: emptyList()
-        val prefix = type.typeName.lowercase()
-        
-        // 找到下一个可用的编号
-        var counter = 1
-        var fileName: String
-        do {
-            fileName = "$prefix-$counter.toml"
-            counter++
-        } while (existingFiles.contains(fileName))
-        
-        return fileName
-    }
-
     private fun startConfigActivity(type: FrpType) {
         try {
-            val fileName = generateConfigFileName(type)
+            val currentDate = Date()
+            val formatter = SimpleDateFormat("yyyy-MM-dd HH.mm.ss", Locale.getDefault())
+            val formattedDateTime = formatter.format(currentDate)
+            val fileName = "$formattedDateTime.toml"
             val file = File(type.getDir(this), fileName)
             
             // 确保目录存在

@@ -283,21 +283,11 @@ private fun ConfigTypeCard(
 
 private fun formatConfigDate(fileName: String): String {
     return try {
-        val nameWithoutExt = fileName.removeSuffix(".toml")
-        
-        // 检查是否是新的命名格式 (frpc-1, frps-2 等)
-        if (nameWithoutExt.matches(Regex("^(frpc|frps)-\\d+$"))) {
-            val parts = nameWithoutExt.split("-")
-            val type = parts[0].uppercase()
-            val number = parts[1]
-            return "$type 配置 #$number"
-        }
-        
-        // 尝试解析旧的时间格式
+        val dateStr = fileName.removeSuffix(".toml")
         val inputFormat = SimpleDateFormat("yyyy-MM-dd HH.mm.ss", Locale.getDefault())
         val outputFormat = SimpleDateFormat("MM月dd日 HH:mm", Locale.getDefault())
-        val date = inputFormat.parse(nameWithoutExt)
-        date?.let { outputFormat.format(it) } ?: "自定义配置"
+        val date = inputFormat.parse(dateStr)
+        date?.let { outputFormat.format(it) } ?: "未知时间"
     } catch (e: Exception) {
         "自定义配置"
     }
