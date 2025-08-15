@@ -133,7 +133,7 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     topBar = {
                         ModernTopAppBar(
-                            title = "frp for Android"
+                            title = "仪表盘"
                         )
                     },
                     floatingActionButton = {
@@ -525,17 +525,7 @@ class MainActivity : ComponentActivity() {
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "frp for Android",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
