@@ -506,9 +506,8 @@ class MainActivity : ComponentActivity() {
             apply()
         }
     }
-}
-  
-  @Composable
+
+    @Composable
     fun StatusOverviewCard(
         totalConfigs: Int,
         runningConfigs: Int,
@@ -747,4 +746,4 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
+    }}

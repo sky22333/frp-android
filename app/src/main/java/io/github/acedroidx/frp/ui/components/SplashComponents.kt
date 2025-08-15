@@ -111,26 +111,17 @@ fun AnimatedCounter(
     modifier: Modifier = Modifier,
     style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.headlineMedium
 ) {
-    var currentValue by remember { mutableStateOf(0) }
-    
-    LaunchedEffect(targetValue) {
-        if (targetValue != currentValue) {
-            val animationSpec = tween<Int>(
-                durationMillis = 800,
-                easing = FastOutSlowInEasing
-            )
-            animate(
-                initialValue = currentValue.toFloat(),
-                targetValue = targetValue.toFloat(),
-                animationSpec = animationSpec
-            ) { value, _ ->
-                currentValue = value.toInt()
-            }
-        }
-    }
+    val animatedValue by animateIntAsState(
+        targetValue = targetValue,
+        animationSpec = tween(
+            durationMillis = 800,
+            easing = FastOutSlowInEasing
+        ),
+        label = "AnimatedCounter"
+    )
     
     Text(
-        text = currentValue.toString(),
+        text = animatedValue.toString(),
         modifier = modifier,
         style = style,
         fontWeight = FontWeight.Bold
