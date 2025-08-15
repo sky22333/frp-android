@@ -23,7 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.compose.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.acedroidx.frp.FrpConfig
 import io.github.acedroidx.frp.FrpType
 import io.github.acedroidx.frp.ui.theme.*
@@ -44,7 +44,7 @@ fun ConfigCard(
     
     // 生命周期感知动画 - 电量优化
     val lifecycleOwner = LocalLifecycleOwner.current
-    val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
+    val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsStateWithLifecycle()
     val isResumed = lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
     
     val scale by animateFloatAsState(

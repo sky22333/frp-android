@@ -18,7 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.compose.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.acedroidx.frp.BuildConfig
 import io.github.acedroidx.frp.ui.theme.*
 
@@ -30,7 +30,7 @@ fun LoadingIndicator(
     if (isLoading) {
         // 生命周期感知 - 电量优化
         val lifecycleOwner = LocalLifecycleOwner.current
-        val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
+        val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsStateWithLifecycle()
         val isResumed = lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
         
         if (isResumed) {
@@ -134,7 +134,7 @@ fun AnimatedCounter(
 ) {
     // 生命周期感知 - 只在Activity处于前台时执行动画
     val lifecycleOwner = LocalLifecycleOwner.current
-    val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
+    val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsStateWithLifecycle()
     val isResumed = lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
     
     // 电量优化：后台时禁用动画，直接显示目标值

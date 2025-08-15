@@ -20,7 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.compose.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -149,7 +149,7 @@ fun ExpandableCard(
 ) {
     // 生命周期感知动画 - 电量优化
     val lifecycleOwner = LocalLifecycleOwner.current
-    val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
+    val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsStateWithLifecycle()
     val isResumed = lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
     
     val rotationAngle by animateFloatAsState(
