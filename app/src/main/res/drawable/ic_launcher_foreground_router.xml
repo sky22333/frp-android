@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Router图标，基于Material Icons Router，居中放置 -->
+    <group
+        android:translateX="54"
+        android:translateY="54">
+        
+        <!-- 主路由器外框 -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M-12,-8 L12,-8 A4,4 0 0,1 16,-4 L16,4 A4,4 0 0,1 12,8 L-12,8 A4,4 0 0,1 -16,4 L-16,-4 A4,4 0 0,1 -12,-8 Z" />
+        
+        <!-- 天线1 -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M-8,-8 L-8,-16 A2,2 0 0,1 -6,-18 A2,2 0 0,1 -4,-16 L-4,-8"
+            android:strokeWidth="1.5"
+            android:strokeColor="#FFFFFF" />
+        
+        <!-- 天线2 -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M0,-8 L0,-20 A2,2 0 0,1 2,-22 A2,2 0 0,1 4,-20 L4,-8"
+            android:strokeWidth="1.5"
+            android:strokeColor="#FFFFFF" />
+        
+        <!-- 天线3 -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M8,-8 L8,-16 A2,2 0 0,1 10,-18 A2,2 0 0,1 12,-16 L12,-8"
+            android:strokeWidth="1.5"
+            android:strokeColor="#FFFFFF" />
+        
+        <!-- 指示灯 -->
+        <circle
+            android:fillColor="#4CAF50"
+            android:cx="-8"
+            android:cy="0"
+            android:r="1.5" />
+        
+        <circle
+            android:fillColor="#FF9800"
+            android:cx="-2"
+            android:cy="0"
+            android:r="1.5" />
+        
+        <circle
+            android:fillColor="#2196F3"
+            android:cx="4"
+            android:cy="0"
+            android:r="1.5" />
+        
+        <circle
+            android:fillColor="#F44336"
+            android:cx="10"
+            android:cy="0"
+            android:r="1.5" />
+        
+        <!-- 网络端口 -->
+        <rect
+            android:fillColor="#666666"
+            android:x="-10"
+            android:y="4"
+            android:width="3"
+            android:height="2"
+            android:rx="0.5" />
+        
+        <rect
+            android:fillColor="#666666"
+            android:x="-5"
+            android:y="4"
+            android:width="3"
+            android:height="2"
+            android:rx="0.5" />
+        
+        <rect
+            android:fillColor="#666666"
+            android:x="0"
+            android:y="4"
+            android:width="3"
+            android:height="2"
+            android:rx="0.5" />
+        
+        <rect
+            android:fillColor="#666666"
+            android:x="5"
+            android:y="4"
+            android:width="3"
+            android:height="2"
+            android:rx="0.5" />
+    </group>
+</vector>

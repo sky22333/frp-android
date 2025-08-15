@@ -207,7 +207,7 @@ class ShellService : LifecycleService() {
                 PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE)
             }
         val notification = NotificationCompat.Builder(this, "shell_bg")
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(getString(R.string.frp_notification_title)).setContentText(
                 getString(
                     R.string.frp_notification_content, _processThreads.value.size

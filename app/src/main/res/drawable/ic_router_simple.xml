@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    
+    <!-- 圆形背景 -->
+    <circle
+        android:cx="24"
+        android:cy="24"
+        android:r="24">
+        <aapt:attr name="android:fillColor" xmlns:aapt="http://schemas.android.com/aapt">
+            <gradient
+                android:startX="0"
+                android:startY="0"
+                android:endX="48"
+                android:endY="48"
+                android:type="linear">
+                <item
+                    android:color="#FF6750A4"
+                    android:offset="0.0" />
+                <item
+                    android:color="#FF8E7CC3"
+                    android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </circle>
+    
+    <!-- Router图标 (基于Material Icons Router) -->
+    <group
+        android:translateX="24"
+        android:translateY="24">
+        
+        <!-- 主体 -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M-8,-4 L8,-4 A2,2 0 0,1 10,-2 L10,2 A2,2 0 0,1 8,4 L-8,4 A2,2 0 0,1 -10,2 L-10,-2 A2,2 0 0,1 -8,-4 Z" />
+        
+        <!-- 天线 -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M-6,-4 L-6,-8 M0,-4 L0,-10 M6,-4 L6,-8"
+            android:strokeWidth="1.5"
+            android:strokeColor="#FFFFFF"
+            android:strokeLineCap="round" />
+        
+        <!-- 指示灯 -->
+        <circle android:fillColor="#4CAF50" android:cx="-4" android:cy="0" android:r="0.8" />
+        <circle android:fillColor="#FF9800" android:cx="0" android:cy="0" android:r="0.8" />
+        <circle android:fillColor="#2196F3" android:cx="4" android:cy="0" android:r="0.8" />
+    </group>
+</vector>
