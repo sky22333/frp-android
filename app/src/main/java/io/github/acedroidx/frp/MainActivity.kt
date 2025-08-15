@@ -122,15 +122,12 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     topBar = {
                         ModernTopAppBar(
-                            title = "frp for Android",
-                            subtitle = "v${BuildConfig.VERSION_NAME}"
+                            title = "frp for Android"
                         )
                     },
                     floatingActionButton = {
                         FloatingActionButton(
-                            onClick = { showAddDialog.value = true },
-                            containerColor = Primary,
-                            contentColor = androidx.compose.ui.graphics.Color.White
+                            onClick = { showAddDialog.value = true }
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Add,
@@ -527,10 +524,6 @@ class MainActivity : ComponentActivity() {
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
-                    InfoChip(
-                        text = "v${BuildConfig.VERSION_NAME}",
-                        color = Primary
-                    )
                 }
 
                 Row(
@@ -640,16 +633,24 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    GradientButton(
+                    Button(
                         onClick = onAddConfig,
-                        text = "添加配置",
-                        icon = Icons.Default.Add,
-                        modifier = Modifier.weight(1f)
-                    )
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("添加配置")
+                    }
                     
                     OutlinedButton(
                         onClick = onAbout,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Info,

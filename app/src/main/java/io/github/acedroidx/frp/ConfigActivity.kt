@@ -159,7 +159,7 @@ class ConfigActivity : ComponentActivity() {
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = null,
-                        tint = Primary
+                        tint = MaterialTheme.colorScheme.primary
                     )
                     Text(
                         text = "重命名配置",
@@ -195,15 +195,17 @@ class ConfigActivity : ComponentActivity() {
                 }
             },
             confirmButton = {
-                GradientButton(
+                Button(
                     onClick = { 
                         if (!isError && text.isNotBlank()) {
                             onConfirm(text)
                         }
                     },
-                    text = "确认",
-                    enabled = !isError && text.isNotBlank()
-                )
+                    enabled = !isError && text.isNotBlank(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("确认")
+                }
             },
             dismissButton = {
                 TextButton(onClick = onDismiss) {
@@ -362,16 +364,24 @@ class ConfigActivity : ComponentActivity() {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                GradientButton(
+                Button(
                     onClick = onSave,
-                    text = "保存配置",
-                    icon = Icons.Default.Save,
-                    modifier = Modifier.weight(1f)
-                )
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Save,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("保存配置")
+                }
                 
                 OutlinedButton(
                     onClick = onCancel,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
@@ -401,7 +411,7 @@ class ConfigActivity : ComponentActivity() {
                     Icon(
                         imageVector = Icons.Default.Code,
                         contentDescription = null,
-                        tint = Primary,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
@@ -428,7 +438,7 @@ class ConfigActivity : ComponentActivity() {
                         )
                     },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Primary,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
                     ),
                     shape = RoundedCornerShape(12.dp)

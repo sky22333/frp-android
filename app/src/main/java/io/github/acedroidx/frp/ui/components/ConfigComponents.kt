@@ -58,7 +58,7 @@ fun ConfigCard(
                     
                     InfoChip(
                         text = config.type.typeName.uppercase(),
-                        color = if (config.type == FrpType.FRPC) Primary else Secondary
+                        color = if (config.type == FrpType.FRPC) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
                     )
                     
                     if (isRunning) {
@@ -150,11 +150,18 @@ fun EmptyConfigState(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         
-        GradientButton(
+        Button(
             onClick = onAddConfig,
-            text = "添加配置",
-            icon = Icons.Default.Add
-        )
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("添加配置")
+        }
     }
 }
 
@@ -180,14 +187,14 @@ fun ConfigTypeSelector(
                     type = FrpType.FRPC,
                     title = "frpc (客户端)",
                     description = "连接到frp服务器，将本地服务暴露到公网",
-                    onClick = { onSelectType(FrpType.FRPC); onDismiss() }
+                    onClick = { onSelectType(FrpType.FRPC) }
                 )
                 
                 ConfigTypeCard(
                     type = FrpType.FRPS,
                     title = "frps (服务端)",
                     description = "作为frp服务器，接受客户端连接",
-                    onClick = { onSelectType(FrpType.FRPS); onDismiss() }
+                    onClick = { onSelectType(FrpType.FRPS) }
                 )
             }
         },
@@ -218,8 +225,8 @@ private fun ConfigTypeCard(
                 modifier = Modifier
                     .size(48.dp)
                     .background(
-                        color = if (type == FrpType.FRPC) Primary.copy(alpha = 0.1f) 
-                               else Secondary.copy(alpha = 0.1f),
+                        color = if (type == FrpType.FRPC) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) 
+                               else MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f),
                         shape = RoundedCornerShape(12.dp)
                     ),
                 contentAlignment = Alignment.Center
@@ -228,7 +235,7 @@ private fun ConfigTypeCard(
                     imageVector = if (type == FrpType.FRPC) Icons.Default.Devices 
                                  else Icons.Default.Storage,
                     contentDescription = null,
-                    tint = if (type == FrpType.FRPC) Primary else Secondary,
+                    tint = if (type == FrpType.FRPC) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.size(24.dp)
                 )
             }

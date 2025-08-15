@@ -2,40 +2,40 @@ package io.github.acedroidx.frp.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Light theme colors
-val Primary = Color(0xFF2196F3)
-val PrimaryVariant = Color(0xFF1976D2)
-val Secondary = Color(0xFF03DAC6)
-val SecondaryVariant = Color(0xFF018786)
-val Background = Color(0xFFFAFAFA)
-val Surface = Color(0xFFFFFFFF)
-val Error = Color(0xFFB00020)
+// Modern Material 3 colors - using native recommended colors
+val Primary = Color(0xFF6750A4)
+val PrimaryVariant = Color(0xFF4F378B)
+val Secondary = Color(0xFF625B71)
+val SecondaryVariant = Color(0xFF4A4458)
+val Background = Color(0xFFFFFBFE)
+val Surface = Color(0xFFFFFBFE)
+val Error = Color(0xFFBA1A1A)
 val OnPrimary = Color(0xFFFFFFFF)
-val OnSecondary = Color(0xFF000000)
-val OnBackground = Color(0xFF000000)
-val OnSurface = Color(0xFF000000)
+val OnSecondary = Color(0xFFFFFFFF)
+val OnBackground = Color(0xFF1C1B1F)
+val OnSurface = Color(0xFF1C1B1F)
 val OnError = Color(0xFFFFFFFF)
 
-// Dark theme colors
-val DarkPrimary = Color(0xFF64B5F6)
-val DarkPrimaryVariant = Color(0xFF42A5F5)
-val DarkSecondary = Color(0xFF03DAC6)
-val DarkSecondaryVariant = Color(0xFF03DAC6)
-val DarkBackground = Color(0xFF121212)
-val DarkSurface = Color(0xFF1E1E1E)
-val DarkError = Color(0xFFCF6679)
-val DarkOnPrimary = Color(0xFF000000)
-val DarkOnSecondary = Color(0xFF000000)
-val DarkOnBackground = Color(0xFFFFFFFF)
-val DarkOnSurface = Color(0xFFFFFFFF)
-val DarkOnError = Color(0xFF000000)
+// Dark theme colors - Material 3 dark scheme
+val DarkPrimary = Color(0xFFD0BCFF)
+val DarkPrimaryVariant = Color(0xFFB69DF8)
+val DarkSecondary = Color(0xFFCCC2DC)
+val DarkSecondaryVariant = Color(0xFFB0A7C0)
+val DarkBackground = Color(0xFF1C1B1F)
+val DarkSurface = Color(0xFF1C1B1F)
+val DarkError = Color(0xFFFFB4AB)
+val DarkOnPrimary = Color(0xFF381E72)
+val DarkOnSecondary = Color(0xFF332D41)
+val DarkOnBackground = Color(0xFFE6E1E5)
+val DarkOnSurface = Color(0xFFE6E1E5)
+val DarkOnError = Color(0xFF690005)
 
-// Status colors
+// Status colors - Material 3 semantic colors
 val SuccessColor = Color(0xFF4CAF50)
 val WarningColor = Color(0xFFFF9800)
-val InfoColor = Color(0xFF2196F3)
-val ErrorColor = Color(0xFFF44336)
+val InfoColor = Color(0xFF6750A4)
+val ErrorColor = Color(0xFFBA1A1A)
 
-// Gradient colors
-val GradientStart = Color(0xFF2196F3)
-val GradientEnd = Color(0xFF21CBF3)
+// Gradient colors - using primary colors
+val GradientStart = Color(0xFF6750A4)
+val GradientEnd = Color(0xFF8E7CC3)

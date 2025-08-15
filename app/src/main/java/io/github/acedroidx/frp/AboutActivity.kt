@@ -107,7 +107,7 @@ class AboutActivity : ComponentActivity() {
                         .size(80.dp)
                         .background(
                             Brush.radialGradient(
-                                colors = listOf(GradientStart, GradientEnd)
+                                colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primaryContainer)
                             ),
                             RoundedCornerShape(20.dp)
                         ),
@@ -281,7 +281,7 @@ class AboutActivity : ComponentActivity() {
                     imageVector = icon,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
-                    tint = Primary
+                    tint = MaterialTheme.colorScheme.primary
                 )
                 Text(
                     text = label,
@@ -321,7 +321,7 @@ class AboutActivity : ComponentActivity() {
                     imageVector = icon,
                     contentDescription = null,
                     modifier = Modifier.size(24.dp),
-                    tint = Primary
+                    tint = MaterialTheme.colorScheme.primary
                 )
                 
                 Column(modifier = Modifier.weight(1f)) {
@@ -361,7 +361,7 @@ class AboutActivity : ComponentActivity() {
                 modifier = Modifier
                     .size(40.dp)
                     .background(
-                        Primary.copy(alpha = 0.1f),
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                         RoundedCornerShape(10.dp)
                     ),
                 contentAlignment = Alignment.Center
@@ -370,7 +370,7 @@ class AboutActivity : ComponentActivity() {
                     imageVector = icon,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
-                    tint = Primary
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
             
