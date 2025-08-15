@@ -6,10 +6,7 @@
     android:viewportHeight="48">
     
     <!-- 圆形背景 -->
-    <circle
-        android:cx="24"
-        android:cy="24"
-        android:r="24">
+    <path android:pathData="M24,0 A24,24 0 1,1 24,48 A24,24 0 1,1 24,0">
         <aapt:attr name="android:fillColor" xmlns:aapt="http://schemas.android.com/aapt">
             <gradient
                 android:startX="0"
@@ -25,7 +22,7 @@
                     android:offset="1.0" />
             </gradient>
         </aapt:attr>
-    </circle>
+    </path>
     
     <!-- Router图标 (基于Material Icons Router) -->
     <group
@@ -37,17 +34,40 @@
             android:fillColor="#FFFFFF"
             android:pathData="M-8,-4 L8,-4 A2,2 0 0,1 10,-2 L10,2 A2,2 0 0,1 8,4 L-8,4 A2,2 0 0,1 -10,2 L-10,-2 A2,2 0 0,1 -8,-4 Z" />
         
-        <!-- 天线 -->
+        <!-- 天线1 -->
         <path
-            android:fillColor="#FFFFFF"
-            android:pathData="M-6,-4 L-6,-8 M0,-4 L0,-10 M6,-4 L6,-8"
-            android:strokeWidth="1.5"
             android:strokeColor="#FFFFFF"
-            android:strokeLineCap="round" />
+            android:strokeWidth="1.5"
+            android:strokeLineCap="round"
+            android:pathData="M-6,-4 L-6,-8" />
         
-        <!-- 指示灯 -->
-        <circle android:fillColor="#4CAF50" android:cx="-4" android:cy="0" android:r="0.8" />
-        <circle android:fillColor="#FF9800" android:cx="0" android:cy="0" android:r="0.8" />
-        <circle android:fillColor="#2196F3" android:cx="4" android:cy="0" android:r="0.8" />
+        <!-- 天线2 -->
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="1.5"
+            android:strokeLineCap="round"
+            android:pathData="M0,-4 L0,-10" />
+        
+        <!-- 天线3 -->
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="1.5"
+            android:strokeLineCap="round"
+            android:pathData="M6,-4 L6,-8" />
+        
+        <!-- 指示灯1 -->
+        <path
+            android:fillColor="#4CAF50"
+            android:pathData="M-4.8,-0.8 A0.8,0.8 0 1,1 -3.2,-0.8 A0.8,0.8 0 1,1 -4.8,-0.8" />
+        
+        <!-- 指示灯2 -->
+        <path
+            android:fillColor="#FF9800"
+            android:pathData="M-0.8,-0.8 A0.8,0.8 0 1,1 0.8,-0.8 A0.8,0.8 0 1,1 -0.8,-0.8" />
+        
+        <!-- 指示灯3 -->
+        <path
+            android:fillColor="#2196F3"
+            android:pathData="M3.2,-0.8 A0.8,0.8 0 1,1 4.8,-0.8 A0.8,0.8 0 1,1 3.2,-0.8" />
     </group>
 </vector>
