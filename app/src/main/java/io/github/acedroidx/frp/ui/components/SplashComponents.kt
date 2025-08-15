@@ -16,6 +16,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsState
 import io.github.acedroidx.frp.BuildConfig
 import io.github.acedroidx.frp.ui.theme.*
 
@@ -25,27 +28,45 @@ fun LoadingIndicator(
     isLoading: Boolean = true
 ) {
     if (isLoading) {
-        val infiniteTransition = rememberInfiniteTransition()
-        val rotation by infiniteTransition.animateFloat(
-            initialValue = 0f,
-            targetValue = 360f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(1000, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart
+        // 生命周期感知 - 电量优化
+        val lifecycleOwner = LocalLifecycleOwner.current
+        val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
+        val isResumed = lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
+        
+        if (isResumed) {
+            val infiniteTransition = rememberInfiniteTransition(label = "LoadingRotation")
+            val rotation by infiniteTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 360f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1200, easing = LinearEasing), // 稍微减慢动画速度
+                    repeatMode = RepeatMode.Restart
+                ),
+                label = "LoadingRotation"
             )
-        )
 
-        Box(
-            modifier = modifier.size(48.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator(
-                modifier = Modifier
-                    .size(40.dp)
-                    .rotate(rotation),
-                color = Primary,
-                strokeWidth = 3.dp
-            )
+            Box(
+                modifier = modifier.size(48.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .rotate(rotation),
+                    strokeWidth = 3.dp
+                )
+            }
+        } else {
+            // 后台时显示静态加载指示器
+            Box(
+                modifier = modifier.size(48.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(40.dp),
+                    strokeWidth = 3.dp
+                )
+            }
         }
     }
 }
@@ -111,12 +132,22 @@ fun AnimatedCounter(
     modifier: Modifier = Modifier,
     style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.headlineMedium
 ) {
+    // 生命周期感知 - 只在Activity处于前台时执行动画
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
+    val isResumed = lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
+    
+    // 电量优化：后台时禁用动画，直接显示目标值
     val animatedValue by animateIntAsState(
         targetValue = targetValue,
-        animationSpec = tween(
-            durationMillis = 800,
-            easing = FastOutSlowInEasing
-        ),
+        animationSpec = if (isResumed) {
+            tween(
+                durationMillis = 600, // 减少动画时长以节省电量
+                easing = FastOutSlowInEasing
+            )
+        } else {
+            snap() // 后台时立即显示目标值，不执行动画
+        },
         label = "AnimatedCounter"
     )
     

@@ -11,6 +11,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,9 +26,47 @@ class ShellService : LifecycleService() {
 
     private val _logText = MutableStateFlow("")
     val logText: StateFlow<String> = _logText
+    
+    // 日志节流机制 - 电量优化
+    private val logBuffer = mutableListOf<String>()
+    private var lastLogUpdateTime = 0L
+    private val logUpdateInterval = 1000L // 1秒批量更新一次
+    private val maxLogLines = 500 // 限制日志行数以节省内存
+    
+    private val logUpdateScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     fun clearLog() {
+        synchronized(logBuffer) {
+            logBuffer.clear()
+        }
         _logText.value = ""
+    }
+    
+    // 节流的日志添加方法
+    fun addLogThrottled(message: String) {
+        synchronized(logBuffer) {
+            logBuffer.add(message)
+            // 限制缓冲区大小
+            if (logBuffer.size > maxLogLines) {
+                logBuffer.removeAt(0)
+            }
+        }
+        
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastLogUpdateTime > logUpdateInterval) {
+            lastLogUpdateTime = currentTime
+            updateLogText()
+        }
+    }
+    
+    private fun updateLogText() {
+        logUpdateScope.launch {
+            val logs = synchronized(logBuffer) {
+                logBuffer.toList()
+            }
+            val logText = logs.joinToString("\n")
+            _logText.value = logText
+        }
     }
 
     // Binder given to clients
@@ -140,6 +179,10 @@ class ShellService : LifecycleService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        
+        // 清理协程
+        logUpdateScope.cancel()
+        
         if (!_processThreads.value.isEmpty()) {
             _processThreads.value.forEach {
 //                it.value.interrupt()
@@ -150,7 +193,10 @@ class ShellService : LifecycleService() {
     }
 
     private fun runCommand(command: List<String>, dir: File): ShellThread {
-        val process_thread = ShellThread(command, dir) { _logText.value += it + "\n" }
+        val process_thread = ShellThread(command, dir) { message ->
+            // 使用节流机制添加日志
+            addLogThrottled(message)
+        }
         process_thread.start()
         return process_thread;
     }

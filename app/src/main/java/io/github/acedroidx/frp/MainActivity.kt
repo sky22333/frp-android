@@ -40,8 +40,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import io.github.acedroidx.frp.ui.theme.FrpTheme
 import io.github.acedroidx.frp.ui.theme.*
 import io.github.acedroidx.frp.ui.components.*
@@ -82,14 +84,19 @@ class MainActivity : ComponentActivity() {
             mBound = true
 
             // 使用Activity的协程作用域，确保在Activity销毁时自动取消
+            // 电量优化：生命周期感知的状态更新
             activityScope.launch {
-                mService.processThreads.collect { processThreads ->
-                    runningConfigList.value = processThreads.keys.toList()
+                lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    mService.processThreads.collect { processThreads ->
+                        runningConfigList.value = processThreads.keys.toList()
+                    }
                 }
             }
             activityScope.launch {
-                mService.logText.collect {
-                    logText.value = it
+                lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    mService.logText.collect {
+                        logText.value = it
+                    }
                 }
             }
         }
@@ -719,13 +726,14 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             } else {
-                // 限制日志长度以避免内存问题
+                // 电量和内存优化：限制日志长度并使用懒加载
                 val truncatedLogText = remember(logText) {
                     val lines = logText.lines()
-                    if (lines.size > 1000) {
-                        "...(显示最近1000行)\n" + lines.takeLast(1000).joinToString("\n")
-                    } else {
-                        logText
+                    when {
+                        lines.size > 500 -> {
+                            "...(显示最近500行)\n" + lines.takeLast(500).joinToString("\n")
+                        }
+                        else -> logText
                     }
                 }
                 

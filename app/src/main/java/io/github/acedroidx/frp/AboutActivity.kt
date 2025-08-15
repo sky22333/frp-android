@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -178,7 +179,7 @@ class AboutActivity : ComponentActivity() {
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "项目链接",
+                    text = "鸣谢",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -186,7 +187,7 @@ class AboutActivity : ComponentActivity() {
                 LinkItem(
                     icon = Icons.Default.Code,
                     title = "frp-Android",
-                    subtitle = "Android客户端源码",
+                    subtitle = "原frp-Android项目",
                     url = "https://github.com/AceDroidX/frp-Android",
                     onClick = { uriHandler.openUri(it) }
                 )
@@ -217,7 +218,7 @@ class AboutActivity : ComponentActivity() {
                 FeatureItem(
                     icon = Icons.Default.FlashOn,
                     title = "高性能",
-                    description = "基于Go语言开发，零依赖，高效稳定"
+                    description = "基于Kotlin原生开发"
                 )
                 
                 FeatureItem(
@@ -338,7 +339,7 @@ class AboutActivity : ComponentActivity() {
                 }
                 
                 Icon(
-                    imageVector = Icons.Default.OpenInNew,
+                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant

@@ -15,6 +15,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsState
 import io.github.acedroidx.frp.FrpConfig
 import io.github.acedroidx.frp.FrpType
 import io.github.acedroidx.frp.ui.theme.*
@@ -32,13 +35,23 @@ fun ConfigCard(
 ) {
     // 使用remember来避免不必要的重组
     val configKey = remember(config) { "${config.type.typeName}_${config.fileName}" }
+    
+    // 生命周期感知动画 - 电量优化
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
+    val isResumed = lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
+    
     val scale by animateFloatAsState(
         targetValue = if (isRunning) 1.02f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "ConfigCardScale_$configKey" // 添加标签以便调试
+        animationSpec = if (isResumed) {
+            spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium
+            )
+        } else {
+            snap() // 后台时禁用动画
+        },
+        label = "ConfigCardScale_$configKey"
     )
 
     ModernCard(
