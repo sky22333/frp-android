@@ -9,10 +9,10 @@
 - 优化电量消耗
 
 <div style="display:inline-block">
-<img src=".github/demo/demo1.jpg" alt="image1.png" width="200">
-<img src=".github/demo/demo2.jpg" alt="image2.png" width="200">
-<img src=".github/demo/demo3.jpg" alt="image1.png" width="200">
-<img src=".github/demo/demo4.jpg" alt="image2.png" width="200">
+<img src=".github/demo/demo11.jpg" alt="image1.png" width="200">
+<img src=".github/demo/demo22.jpg" alt="image2.png" width="200">
+<img src=".github/demo/demo33.jpg" alt="image1.png" width="200">
+<img src=".github/demo/demo44.jpg" alt="image2.png" width="200">
 </div>
 
 ## 技术栈
