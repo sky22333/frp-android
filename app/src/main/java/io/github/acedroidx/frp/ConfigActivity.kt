@@ -105,8 +105,6 @@ class ConfigActivity : ComponentActivity() {
                     configType = if (::configFile.isInitialized) {
                         if (configFile.parent?.endsWith("frpc") == true) "客户端配置" else "服务端配置"
                     } else "配置文件",
-                    isAutoStart = autoStart,
-                    onAutoStartChange = { setAutoStart(it) },
                     onRename = { openDialog.value = true }
                 )
             }
@@ -114,8 +112,7 @@ class ConfigActivity : ComponentActivity() {
             // 操作按钮
             item {
                 ActionButtonsCard(
-                    onSave = { saveConfig(); closeActivity() },
-                    onCancel = { closeActivity() }
+                    onSave = { saveConfig(); closeActivity() }
                 )
             }
             
@@ -289,108 +286,53 @@ class ConfigActivity : ComponentActivity() {
     fun ConfigInfoCard(
         fileName: String,
         configType: String,
-        isAutoStart: Boolean,
-        onAutoStartChange: (Boolean) -> Unit,
         onRename: () -> Unit
     ) {
         ModernCard {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = fileName,
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = configType,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    
-                    ActionButton(
-                        icon = Icons.Default.Edit,
-                        contentDescription = "重命名",
-                        onClick = onRename
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = fileName,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = configType,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 
-                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "开机自启",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = "系统启动时自动运行此配置",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(
-                        checked = isAutoStart,
-                        onCheckedChange = onAutoStartChange,
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = SuccessColor,
-                            checkedTrackColor = SuccessColor.copy(alpha = 0.5f)
-                        )
-                    )
-                }
+                ActionButton(
+                    icon = Icons.Default.Edit,
+                    contentDescription = "重命名",
+                    onClick = onRename
+                )
             }
         }
     }
     
     @Composable
     fun ActionButtonsCard(
-        onSave: () -> Unit,
-        onCancel: () -> Unit
+        onSave: () -> Unit
     ) {
         ModernCard {
-            Row(
+            Button(
+                onClick = onSave,
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Button(
-                    onClick = onSave,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Save,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("保存配置")
-                }
-                
-                OutlinedButton(
-                    onClick = onCancel,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("取消")
-                }
+                Icon(
+                    imageVector = Icons.Default.Save,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("保存配置")
             }
         }
     }
