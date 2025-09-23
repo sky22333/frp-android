@@ -78,6 +78,27 @@ frp-android/
 
 ## 常见问题
 
+服务端`frps.toml`配置
+```
+bindPort = 7000
+auth.token = "admin123"
+```
+客户端`frpc.toml`配置
+```
+serverAddr = "8.8.8.8"      # 公网服务器IP
+serverPort = 7000           # 对接端口和frps一致
+auth.token = "admin123"     # 认证令牌和frps一致
+
+# 暴露SSH服务
+[[proxies]]
+name = "ssh"
+type = "tcp"
+localIP = "127.0.0.1"
+localPort = 22            # 本地服务端口
+remotePort = 6000         # 让frps暴露的公网端口
+```
+
+
 ### 项目的frp内核(libfrpc.so)是怎么来的？
 
 直接从[frp的release](https://github.com/fatedier/frp/releases)里把对应ABI的Linux版本压缩包解压之后重命名frpc为libfrpc.so  
