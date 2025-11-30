@@ -1,4 +1,4 @@
-package io.github.acedroidx.frp
+ package io.github.acedroidx.frp
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -186,24 +186,16 @@ class AboutActivity : ComponentActivity() {
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "鸣谢",
+                    text = "项目地址",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold
                 )
                 
                 LinkItem(
                     icon = Icons.Filled.Code,
-                    title = "frp-Android",
-                    subtitle = "原frp-Android项目",
-                    url = "https://github.com/AceDroidX/frp-Android",
-                    onClick = { uriHandler.openUri(it) }
-                )
-                
-                LinkItem(
-                    icon = Icons.Filled.Router,
-                    title = "frp",
-                    subtitle = "frp官方项目",
-                    url = "https://github.com/fatedier/frp",
+                    title = "frp for Android",
+                    subtitle = "关于此项目",
+                    url = "https://github.com/sky22333/frp-android",
                     onClick = { uriHandler.openUri(it) }
                 )
             }
@@ -256,13 +248,13 @@ class AboutActivity : ComponentActivity() {
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "开发者",
+                    text = "鸣谢",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold
                 )
                 
                 Text(
-                    text = "本项目基于frp官方项目开发，感谢fatedier及其团队的贡献。\n\n如果您在使用过程中遇到问题，欢迎在GitHub上提交Issue。",
+                    text = "AceDroidX/frp-Android。\n\nfatedier/frp。",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
