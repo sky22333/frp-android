@@ -254,7 +254,7 @@ class AboutActivity : ComponentActivity() {
                 )
                 
                 Text(
-                    text = "AceDroidX/frp-Android。\n\nfatedier/frp。",
+                    text = "AceDroidX/frp-Android\n\nfatedier/frp",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
