@@ -7,7 +7,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import com.sky22333.frpandroid.core.data.ThemeMode
+import com.sky22333.frpandroid.core.frp.ThemeMode
 
 private val LightColors = lightColorScheme(
     primary = Color(0xFF4F7F86),

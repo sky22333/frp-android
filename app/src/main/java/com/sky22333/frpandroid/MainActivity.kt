@@ -35,7 +35,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.sky22333.frpandroid.core.data.AppGraph
 import com.sky22333.frpandroid.core.data.FrpSettings
-import com.sky22333.frpandroid.core.data.LanguageMode
+import com.sky22333.frpandroid.core.frp.LanguageMode
 import com.sky22333.frpandroid.core.ui.FrpAndroidTheme
 import com.sky22333.frpandroid.feature.dashboard.DashboardScreen
 import com.sky22333.frpandroid.feature.editor.EditorScreen

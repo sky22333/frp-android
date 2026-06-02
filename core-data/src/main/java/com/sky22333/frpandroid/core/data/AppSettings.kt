@@ -7,21 +7,10 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.sky22333.frpandroid.core.frp.LanguageMode
+import com.sky22333.frpandroid.core.frp.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-
-enum class ThemeMode {
-    System,
-    Light,
-    Dark,
-    Amoled,
-}
-
-enum class LanguageMode {
-    System,
-    Chinese,
-    English,
-}
 
 data class FrpSettings(
     val bootStartEnabled: Boolean = false,

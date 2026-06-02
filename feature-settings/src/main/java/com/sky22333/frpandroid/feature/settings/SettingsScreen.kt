@@ -34,8 +34,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.sky22333.frpandroid.core.data.AppGraph
 import com.sky22333.frpandroid.core.data.FrpSettings
-import com.sky22333.frpandroid.core.data.LanguageMode
-import com.sky22333.frpandroid.core.data.ThemeMode
+import com.sky22333.frpandroid.core.frp.LanguageMode
+import com.sky22333.frpandroid.core.frp.ThemeMode
 import com.sky22333.frpandroid.core.runtime.FrpForegroundService
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow

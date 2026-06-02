@@ -50,3 +50,16 @@ data class FrpResult(
         }
     }
 }
+
+enum class ThemeMode {
+    System,
+    Light,
+    Dark,
+    Amoled,
+}
+
+enum class LanguageMode {
+    System,
+    Chinese,
+    English,
+}

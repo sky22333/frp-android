@@ -11,6 +11,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":core-frp"))
     implementation(project(":core-data"))
     implementation(project(":core-runtime"))
     implementation(project(":core-ui"))

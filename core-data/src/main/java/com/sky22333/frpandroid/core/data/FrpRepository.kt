@@ -8,6 +8,8 @@ import com.sky22333.frpandroid.core.frp.FrpResult
 import com.sky22333.frpandroid.core.frp.FrpRuntimeManager
 import com.sky22333.frpandroid.core.frp.FrpRuntimeState
 import com.sky22333.frpandroid.core.frp.FrpType
+import com.sky22333.frpandroid.core.frp.LanguageMode
+import com.sky22333.frpandroid.core.frp.ThemeMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
