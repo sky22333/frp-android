@@ -1,0 +1,10 @@
+<resources>
+    <string name="logs_title">Logs</string>
+    <string name="logs_keyword">Keyword</string>
+    <string name="logs_instance">Instance</string>
+    <string name="logs_level">Level</string>
+    <string name="logs_pause_scroll">Pause scroll</string>
+    <string name="logs_copy_errors">Copy errors</string>
+    <string name="logs_export">Export logs</string>
+    <string name="logs_empty">No logs</string>
+</resources>

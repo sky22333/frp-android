@@ -1,0 +1,20 @@
+<resources>
+    <string name="settings_title">Settings</string>
+    <string name="settings_boot_start">Boot start</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_battery">Battery optimization guide</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_log_retention">Log retention days</string>
+    <string name="settings_network_reconnect">Reconnect after network recovery</string>
+    <string name="settings_auto_retry">Auto retry after failure</string>
+    <string name="settings_diagnostics">Background diagnostics sampling</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_pending_start">Boot recovery is pending</string>
+    <string name="settings_system">Follow system</string>
+    <string name="settings_light">Light</string>
+    <string name="settings_dark">Dark</string>
+    <string name="settings_amoled">AMOLED</string>
+    <string name="settings_chinese">Chinese</string>
+    <string name="settings_english">English</string>
+</resources>

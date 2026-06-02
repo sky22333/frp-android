@@ -1,0 +1,2 @@
+-keep class io.github.sky22333.frplib.** { *; }
+-keep interface io.github.sky22333.frplib.** { *; }

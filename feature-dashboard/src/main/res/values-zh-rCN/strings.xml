@@ -1,0 +1,16 @@
+<resources>
+    <string name="dashboard_title">控制台</string>
+    <string name="dashboard_running">运行中</string>
+    <string name="dashboard_stopped">已停止</string>
+    <string name="dashboard_instances_summary">%1$d 个运行 · %2$d 个失败</string>
+    <string name="dashboard_stop_all">停止全部</string>
+    <string name="dashboard_start">启动</string>
+    <string name="dashboard_stop">停止</string>
+    <string name="dashboard_restart">重启</string>
+    <string name="dashboard_foreground_service">前台服务</string>
+    <string name="dashboard_boot_start">开机自启</string>
+    <string name="dashboard_profiles">隧道实例</string>
+    <string name="dashboard_view_all">查看全部</string>
+    <string name="dashboard_new_tunnel">新建隧道</string>
+    <string name="dashboard_no_profiles">还没有隧道配置</string>
+</resources>

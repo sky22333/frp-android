@@ -1,0 +1,20 @@
+<resources>
+    <string name="settings_title">设置</string>
+    <string name="settings_boot_start">开机自启</string>
+    <string name="settings_notifications">通知设置</string>
+    <string name="settings_battery">电池优化引导</string>
+    <string name="settings_theme">主题</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_log_retention">日志保留天数</string>
+    <string name="settings_network_reconnect">网络恢复后重连</string>
+    <string name="settings_auto_retry">失败后自动重试</string>
+    <string name="settings_diagnostics">后台诊断采样</string>
+    <string name="settings_version">版本</string>
+    <string name="settings_pending_start">存在待恢复的开机自启任务</string>
+    <string name="settings_system">跟随系统</string>
+    <string name="settings_light">浅色</string>
+    <string name="settings_dark">深色</string>
+    <string name="settings_amoled">AMOLED</string>
+    <string name="settings_chinese">中文</string>
+    <string name="settings_english">English</string>
+</resources>
