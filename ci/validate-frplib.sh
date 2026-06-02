@@ -36,15 +36,15 @@ validate_aar() {
   local frplib_api
   frplib_api="$(javap -classpath "${tmp_dir}/${name}/classes.jar" io.github.sky22333.frplib.Frplib)"
   for method in \
-    StartClientWithID \
-    StartServerWithID \
-    ReloadClientWithID \
-    ReloadServerWithID \
-    StopClientWithID \
-    StopServerWithID \
-    StopAll \
-    ListInstances \
-    SetLogCallback; do
+    startClientWithID \
+    startServerWithID \
+    reloadClientWithID \
+    reloadServerWithID \
+    stopClientWithID \
+    stopServerWithID \
+    stopAll \
+    listInstances \
+    setLogCallback; do
     printf '%s' "${frplib_api}" | grep -q "${method}" || {
       echo "AAR Frplib 缺少方法: ${method} (${aar})" >&2
       exit 1

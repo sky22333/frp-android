@@ -10,14 +10,14 @@ class FrplibBridge {
     val isAvailable: Boolean
         get() = frplibClass != null
 
-    fun startClient(id: String, toml: String): String = invokeString("StartClientWithID", id, toml)
-    fun startServer(id: String, toml: String): String = invokeString("StartServerWithID", id, toml)
-    fun reloadClient(id: String, toml: String): String = invokeString("ReloadClientWithID", id, toml)
-    fun reloadServer(id: String, toml: String): String = invokeString("ReloadServerWithID", id, toml)
-    fun stopClient(id: String): String = invokeString("StopClientWithID", id)
-    fun stopServer(id: String): String = invokeString("StopServerWithID", id)
-    fun stopAll(): String = invokeString("StopAll")
-    fun listInstances(): String = invokeString("ListInstances")
+    fun startClient(id: String, toml: String): String = invokeString("startClientWithID", id, toml)
+    fun startServer(id: String, toml: String): String = invokeString("startServerWithID", id, toml)
+    fun reloadClient(id: String, toml: String): String = invokeString("reloadClientWithID", id, toml)
+    fun reloadServer(id: String, toml: String): String = invokeString("reloadServerWithID", id, toml)
+    fun stopClient(id: String): String = invokeString("stopClientWithID", id)
+    fun stopServer(id: String): String = invokeString("stopServerWithID", id)
+    fun stopAll(): String = invokeString("stopAll")
+    fun listInstances(): String = invokeString("listInstances")
 
     fun setLogCallback(sink: FrpLogSink) {
         val target = frplibClass ?: return
@@ -42,7 +42,7 @@ class FrplibBridge {
             null
         }
         runCatching {
-            target.getMethod("SetLogCallback", callbackClass).invoke(null, callback)
+            target.getMethod("setLogCallback", callbackClass).invoke(null, callback)
         }
     }
 
