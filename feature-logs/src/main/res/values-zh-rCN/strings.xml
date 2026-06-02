@@ -1,6 +1,6 @@
 <resources>
     <string name="logs_title">日志</string>
-    <string name="logs_keyword">关键词</string>
+    <string name="logs_keyword">关键字</string>
     <string name="logs_instance">实例</string>
     <string name="logs_level">级别</string>
     <string name="logs_pause_scroll">暂停滚动</string>

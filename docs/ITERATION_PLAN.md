@@ -23,7 +23,7 @@
 | 前台服务 | frp 长期运行统一走 `FrpForegroundService`，自动重试不直接启动 native frp | 已完成 |
 | 自动重试 | 抽出 `FrpRuntimePolicy`，明确哪些错误可重试，`INVALID_TOML` 和 `INVALID_TEMP_DIR` 不重试 | 已完成 |
 | 开机自启 | 只处理解锁后的 `BOOT_COMPLETED`，失败时记录 `pendingStart` | 已完成 |
-| 日志 | 日志回调集中注册，日志脱敏、缓冲和批量持久化 | 已完成 |
+| 日志 | 日志回调集中注册，日志脱敏、缓冲和批量持久化；日志导出在 IO 协程执行 | 已完成 |
 | 导入导出 | TOML 导入和日志导出使用系统文件选择器，并放到 IO 线程处理 | 已完成 |
 | 设置页诊断 | 增加诊断摘要：frplib 可用性、runtime 初始化状态、tempDir 状态、运行/失败数量、pendingStart、最近错误 | 已完成 |
 | CI AAR 验收 | 校验多架构 AAR、`Frplib.class`、`FrpLogCallback.class` 和 gomobile 小驼峰 API | 已完成 |
@@ -58,8 +58,11 @@
 | 第五阶段 | 配置能力 | TOML 模板、证书/密钥/include 文件管理、配置校验提示增强 |
 | 第六阶段 | 发布维护 | 验收清单、release notes 模板、frplib 升级兼容策略 |
 
-## 最近一次更新
+## 最近更新记录
 
-| 日期 | 更新内容 | 下一步 |
-| --- | --- | --- |
-| 2026-06-03 | 新增本文档；整理已完善内容和后续计划；明确每次修改必须同步记录 | 优先补 UI loading/disabled、删除失败反馈和日志页交互 |
+| 日期 | 更新内容 | 影响范围 | 下一步 |
+| --- | --- | --- | --- |
+| 2026-06-03 | 补齐 `app` 直接使用 `collectAsStateWithLifecycle` 所需的 `androidx.lifecycle:lifecycle-runtime-compose` 依赖 | `app` | 继续保持模块依赖与实际 imports 显式一致 |
+| 2026-06-03 | 补齐 `feature-editor` 使用 Activity Result API 所需的 `androidx.activity:activity-compose` 依赖 | `feature-editor` | 继续检查各 feature 模块依赖与实际 imports 是否一致 |
+| 2026-06-03 | 修复 `feature-logs` 日志导出协程缺少 `kotlinx.coroutines.launch` 导入导致的编译错误 | `feature-logs` | 继续补 UI loading/disabled、删除失败反馈和日志页交互 |
+| 2026-06-03 | 新增本文档；整理已完善内容和后续计划；明确每次修改必须同步记录 | docs | 优先补 UI loading/disabled、删除失败反馈和日志页交互 |
