@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings as AndroidSettings
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
@@ -77,7 +78,7 @@ fun SettingsScreen(
             ListItem(
                 headlineContent = { Text(stringResource(R.string.settings_pending_start)) },
                 leadingContent = { Icon(Icons.Rounded.PowerSettingsNew, contentDescription = null) },
-                modifier = Modifier.clickableNoRipple { viewModel.recoverPendingStart(context) },
+                modifier = Modifier.clickable { viewModel.recoverPendingStart(context) },
             )
         }
         ToggleItem(
@@ -103,23 +104,23 @@ fun SettingsScreen(
         ListItem(
             headlineContent = { Text(stringResource(R.string.settings_notifications)) },
             leadingContent = { Icon(Icons.Rounded.Notifications, contentDescription = null) },
-            modifier = Modifier.clickableNoRipple { openNotificationSettings(context) },
+            modifier = Modifier.clickable { openNotificationSettings(context) },
         )
         ListItem(
             headlineContent = { Text(stringResource(R.string.settings_battery)) },
             leadingContent = { Icon(Icons.Rounded.BatterySaver, contentDescription = null) },
-            modifier = Modifier.clickableNoRipple { openBatterySettings(context) },
+            modifier = Modifier.clickable { openBatterySettings(context) },
         )
         ListItem(
             headlineContent = { Text(stringResource(R.string.settings_theme)) },
             supportingContent = { Text(settings.themeMode.name) },
             leadingContent = { Icon(Icons.Rounded.Settings, contentDescription = null) },
-            modifier = Modifier.clickableNoRipple { themeDialog = true },
+            modifier = Modifier.clickable { themeDialog = true },
         )
         ListItem(
             headlineContent = { Text(stringResource(R.string.settings_language)) },
             supportingContent = { Text(settings.languageMode.name) },
-            modifier = Modifier.clickableNoRipple { languageDialog = true },
+            modifier = Modifier.clickable { languageDialog = true },
         )
         ListItem(
             headlineContent = { Text("${stringResource(R.string.settings_log_retention)}: ${settings.logRetentionDays}") },
@@ -216,6 +217,3 @@ private fun openNotificationSettings(context: Context) {
 private fun openBatterySettings(context: Context) {
     context.startActivity(Intent(AndroidSettings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
 }
-
-private fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier =
-    androidx.compose.foundation.clickable(onClick = onClick)

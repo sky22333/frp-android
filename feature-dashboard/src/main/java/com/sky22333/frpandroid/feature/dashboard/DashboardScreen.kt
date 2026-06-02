@@ -287,9 +287,10 @@ private fun ProfileRuntimeCard(
             }
         },
     )
-    if (!state?.lastError.isNullOrBlank()) {
+    val lastError = state?.lastError
+    if (!lastError.isNullOrBlank()) {
         ErrorText(
-            text = state?.lastError.orEmpty(),
+            text = lastError,
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
         )
     }
