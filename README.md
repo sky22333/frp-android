@@ -1,6 +1,6 @@
 # frp-android
 
-基于 `frplib` AAR 的 Android frp 控制台 App。
+基于 `sky22333/frplib` AAR 的 Android frp 控制台 App。
 
 ## 构建方式
 
@@ -56,7 +56,28 @@ CI 会在构建前验收 AAR：
 检查四个 AAR 文件存在
 检查 Frplib.class
 检查 FrpLogCallback.class
-检查 Start/Stop/Reload/StopAll/ListInstances/SetLogCallback 方法
+检查 setTempDir、start/stop/reload、isRunning、stopAll、listInstances、setLogCallback 方法
+```
+
+## frplib 使用原则
+
+Go 源码中的导出函数是大写开头，例如 `SetTempDir`。gomobile 生成到 Java/Kotlin 后会转成小驼峰，例如 `setTempDir`。
+
+App 初始化仓库时会先调用：
+
+```text
+Frplib.setTempDir(context.cacheDir.absolutePath)
+```
+
+如果返回非空错误，例如 `INVALID_TEMP_DIR: ...`，应用不得继续启动或重载 frp。
+
+运行时统一使用多实例 API：
+
+```text
+startClientWithID / startServerWithID
+reloadClientWithID / reloadServerWithID
+stopClientWithID / stopServerWithID
+listInstances / stopAll / setLogCallback
 ```
 
 ## 流水线顺序
@@ -93,7 +114,7 @@ frp-android-x86_64-release.apk
 
 ## 可选 Release 签名
 
-如果需要发布已签名 release APK，在仓库 Secrets 中配置：
+如需发布已签名 release APK，在仓库 Secrets 配置：
 
 ```text
 ANDROID_KEYSTORE_BASE64
@@ -102,7 +123,7 @@ ANDROID_KEY_ALIAS
 ANDROID_KEY_PASSWORD
 ```
 
-`ANDROID_KEYSTORE_BASE64` 是 keystore 文件的 Base64 内容。未配置这些 Secrets 时，流水线仍会构建 unsigned release APK。
+未配置这些 Secrets 时，流水线仍会构建 unsigned release APK。
 
 ## 技术栈
 
@@ -112,21 +133,8 @@ ANDROID_KEY_PASSWORD
 - ForegroundService + BootReceiver + WorkManager
 - Gradle Version Catalog
 
-## 已实现运行能力
-
-- 前台服务常驻通知
-- 通知内打开应用、停止全部、查看日志
-- Android 13+ 启动隧道前请求通知权限
-- 开机自启与 pendingStart 恢复
-- 网络恢复后按设置重连
-- 失败后按设置通过 WorkManager 指数退避重试
-- TOML 文件通过系统文件选择器导入
-- 日志通过系统文件创建器导出
-- 日志脱敏、过滤、复制错误
-
 ## Android 版本
 
 - `minSdk`: 23
 - `compileSdk`: 36
 - `targetSdk`: 36
-- Android 17 / API 37 作为 preview smoke test 目标，不阻塞稳定发布。

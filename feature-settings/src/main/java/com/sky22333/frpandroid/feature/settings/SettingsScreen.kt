@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BatterySaver
+import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.Settings
@@ -23,6 +24,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,17 +36,26 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.sky22333.frpandroid.core.data.AppGraph
+import com.sky22333.frpandroid.core.data.FrpDiagnostics
 import com.sky22333.frpandroid.core.data.FrpSettings
 import com.sky22333.frpandroid.core.frp.LanguageMode
 import com.sky22333.frpandroid.core.frp.ThemeMode
 import com.sky22333.frpandroid.core.runtime.FrpForegroundService
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+data class SettingsUiState(
+    val diagnostics: FrpDiagnostics? = null,
+)
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppGraph.repository(application)
+    private val mutableUiState = MutableStateFlow(SettingsUiState())
+    val uiState: StateFlow<SettingsUiState> = mutableUiState
     val settings: StateFlow<FrpSettings> = repository.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FrpSettings())
 
@@ -55,6 +66,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setRetention(days: Int) = viewModelScope.launch { repository.setLogRetentionDays(days) }
     fun setTheme(mode: ThemeMode) = viewModelScope.launch { repository.setThemeMode(mode) }
     fun setLanguage(mode: LanguageMode) = viewModelScope.launch { repository.setLanguageMode(mode) }
+    fun refreshDiagnostics() = viewModelScope.launch {
+        repository.initialize()
+        mutableUiState.update { it.copy(diagnostics = repository.diagnostics()) }
+    }
     fun recoverPendingStart(context: Context) = viewModelScope.launch {
         val recoverableProfiles = repository.getNetworkRecoverableProfiles()
         val profiles = if (recoverableProfiles.isNotEmpty()) recoverableProfiles else repository.getAutoStartProfiles()
@@ -69,9 +84,14 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var themeDialog by remember { mutableStateOf(false) }
     var languageDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshDiagnostics()
+    }
 
     Column(Modifier.fillMaxSize()) {
         if (settings.pendingStart) {
@@ -101,6 +121,27 @@ fun SettingsScreen(
             checked = settings.diagnosticsSamplingEnabled,
             onChange = viewModel::setDiagnostics,
         )
+        uiState.diagnostics?.let { diagnostics ->
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.settings_diagnostics_summary)) },
+                supportingContent = {
+                    Text(
+                        stringResource(
+                            R.string.settings_diagnostics_details,
+                            diagnostics.nativeAvailable,
+                            diagnostics.runtimeInitialized,
+                            diagnostics.tempDirStatus,
+                            diagnostics.runningCount,
+                            diagnostics.failedCount,
+                            diagnostics.pendingStart,
+                            diagnostics.lastError ?: "-",
+                        ),
+                    )
+                },
+                leadingContent = { Icon(Icons.Rounded.BugReport, contentDescription = null) },
+                modifier = Modifier.clickable { viewModel.refreshDiagnostics() },
+            )
+        }
         ListItem(
             headlineContent = { Text(stringResource(R.string.settings_notifications)) },
             leadingContent = { Icon(Icons.Rounded.Notifications, contentDescription = null) },

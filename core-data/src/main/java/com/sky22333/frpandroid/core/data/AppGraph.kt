@@ -10,6 +10,7 @@ object AppGraph {
             repository ?: FrpRepository(
                 dao = FrpDatabase.get(context).frpDao(),
                 settingsStore = SettingsStore(context.applicationContext),
+                appCacheDir = context.applicationContext.cacheDir,
             ).also { repository = it }
         }
 }

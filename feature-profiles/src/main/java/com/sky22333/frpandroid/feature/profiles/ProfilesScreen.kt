@@ -35,7 +35,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
@@ -52,6 +51,7 @@ import java.util.UUID
 
 class ProfilesViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppGraph.repository(application)
+    private val appContext = application.applicationContext
     val profiles: StateFlow<List<FrpProfile>> = repository.profiles
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -80,6 +80,13 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { repository.deleteProfile(profile.id) }
     }
 
+    fun importToml(uri: Uri) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val toml = readToml(appContext, uri)
+            create(detectType(toml), toml)
+        }
+    }
+
     private fun defaultToml(type: FrpType): String =
         if (type == FrpType.Client) {
             """
@@ -106,12 +113,11 @@ fun ProfilesScreen(
     onEditProfile: (String) -> Unit,
 ) {
     val profiles by viewModel.profiles.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     var importDialog by remember { mutableStateOf(false) }
+    var deleteCandidate by remember { mutableStateOf<FrpProfile?>(null) }
     val documentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
-            val toml = readToml(context, uri)
-            viewModel.create(detectType(toml), toml)
+            viewModel.importToml(uri)
         }
     }
 
@@ -156,7 +162,7 @@ fun ProfilesScreen(
                                 checked = profile.autoStart,
                                 onCheckedChange = { viewModel.toggleAutoStart(profile, it) },
                             )
-                            IconButton(onClick = { viewModel.delete(profile) }) {
+                            IconButton(onClick = { deleteCandidate = profile }) {
                                 Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.profiles_delete))
                             }
                         }
@@ -172,6 +178,29 @@ fun ProfilesScreen(
             onImport = { type, toml ->
                 viewModel.create(type, toml)
                 importDialog = false
+            },
+        )
+    }
+
+    deleteCandidate?.let { profile ->
+        AlertDialog(
+            onDismissRequest = { deleteCandidate = null },
+            title = { Text(stringResource(R.string.profiles_delete)) },
+            text = { Text(profile.name) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.delete(profile)
+                        deleteCandidate = null
+                    },
+                ) {
+                    Text(stringResource(R.string.profiles_delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteCandidate = null }) {
+                    Text(androidx.compose.ui.res.stringResource(android.R.string.cancel))
+                }
             },
         )
     }

@@ -29,5 +29,23 @@ class FrpResultTest {
 
         assertEquals("ALREADY_RUNNING", result.code)
         assertEquals("ALREADY_RUNNING", result.message)
+        assertTrue(result.isAlreadyRunning)
+    }
+
+    @Test
+    fun stopFailedIsNoOpOnlyForAlreadyStoppedMessages() {
+        val stopped = FrpResult.fromRaw("STOP_FAILED: instance not running")
+        val realFailure = FrpResult.fromRaw("STOP_FAILED: failed to close socket")
+
+        assertTrue(stopped.isAlreadyStopped)
+        org.junit.Assert.assertFalse(realFailure.isAlreadyStopped)
+    }
+
+    @Test
+    fun invalidTempDirIsRecognized() {
+        val result = FrpResult.fromRaw("INVALID_TEMP_DIR: failed to create cache dir")
+
+        assertEquals("INVALID_TEMP_DIR", result.code)
+        assertTrue(result.isInvalidTempDir)
     }
 }

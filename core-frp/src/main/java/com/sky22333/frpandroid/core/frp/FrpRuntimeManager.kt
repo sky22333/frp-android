@@ -5,19 +5,41 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.io.File
+
+interface FrpRuntimeGateway {
+    val isNativeAvailable: Boolean
+
+    fun configureTempDir(directory: File): FrpResult
+    fun validateToml(toml: String): FrpResult
+    suspend fun registerLogCallbackOnce(sink: FrpLogSink)
+    suspend fun start(profile: FrpProfile): FrpResult
+    suspend fun reload(profile: FrpProfile): FrpResult
+    suspend fun stop(id: String, type: FrpType): FrpResult
+    suspend fun stopAll(): FrpResult
+    suspend fun listInstances(): List<FrpRuntimeState>
+}
 
 class FrpRuntimeManager(
     private val bridge: FrplibBridge = FrplibBridge(),
     private val tomlValidator: TomlValidator = TomlValidator(),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-) {
+) : FrpRuntimeGateway {
     private val logMutex = Mutex()
     private var logCallbackRegistered = false
+    private var tempDirResult = FrpResult(code = null, message = "")
 
-    val isNativeAvailable: Boolean
+    override val isNativeAvailable: Boolean
         get() = bridge.isAvailable
 
-    suspend fun registerLogCallbackOnce(sink: FrpLogSink) {
+    override fun configureTempDir(directory: File): FrpResult {
+        tempDirResult = FrpResult.fromRaw(bridge.configureTempDir(directory))
+        return tempDirResult
+    }
+
+    override fun validateToml(toml: String): FrpResult = tomlValidator.validate(toml)
+
+    override suspend fun registerLogCallbackOnce(sink: FrpLogSink) {
         logMutex.withLock {
             if (!logCallbackRegistered) {
                 bridge.setLogCallback(sink)
@@ -26,7 +48,8 @@ class FrpRuntimeManager(
         }
     }
 
-    suspend fun start(profile: FrpProfile): FrpResult = withContext(ioDispatcher) {
+    override suspend fun start(profile: FrpProfile): FrpResult = withContext(ioDispatcher) {
+        if (!tempDirResult.isSuccess) return@withContext tempDirResult
         val validation = tomlValidator.validate(profile.toml)
         if (!validation.isSuccess) return@withContext validation
         val raw = when (profile.type) {
@@ -36,7 +59,8 @@ class FrpRuntimeManager(
         FrpResult.fromRaw(raw)
     }
 
-    suspend fun reload(profile: FrpProfile): FrpResult = withContext(ioDispatcher) {
+    override suspend fun reload(profile: FrpProfile): FrpResult = withContext(ioDispatcher) {
+        if (!tempDirResult.isSuccess) return@withContext tempDirResult
         val validation = tomlValidator.validate(profile.toml)
         if (!validation.isSuccess) return@withContext validation
         val raw = when (profile.type) {
@@ -46,20 +70,20 @@ class FrpRuntimeManager(
         FrpResult.fromRaw(raw)
     }
 
-    suspend fun stop(id: String, type: FrpType): FrpResult = withContext(ioDispatcher) {
+    override suspend fun stop(id: String, type: FrpType): FrpResult = withContext(ioDispatcher) {
         val raw = when (type) {
             FrpType.Client -> bridge.stopClient(id)
             FrpType.Server -> bridge.stopServer(id)
         }
         val result = FrpResult.fromRaw(raw)
-        if (result.code == "STOP_FAILED") FrpResult(code = null, message = "") else result
+        if (result.isAlreadyStopped) FrpResult(code = null, message = "") else result
     }
 
-    suspend fun stopAll(): FrpResult = withContext(ioDispatcher) {
+    override suspend fun stopAll(): FrpResult = withContext(ioDispatcher) {
         FrpResult.fromRaw(bridge.stopAll())
     }
 
-    suspend fun listInstances(): List<FrpRuntimeState> = withContext(ioDispatcher) {
+    override suspend fun listInstances(): List<FrpRuntimeState> = withContext(ioDispatcher) {
         bridge.listInstances()
             .lineSequence()
             .mapNotNull { line -> parseInstanceLine(line) }

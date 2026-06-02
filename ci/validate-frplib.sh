@@ -36,12 +36,24 @@ validate_aar() {
   local frplib_api
   frplib_api="$(javap -classpath "${tmp_dir}/${name}/classes.jar" io.github.sky22333.frplib.Frplib)"
   for method in \
+    version \
+    setTempDir \
+    startClient \
+    stopClient \
+    reloadClient \
+    isClientRunning \
+    startServer \
+    stopServer \
+    reloadServer \
+    isServerRunning \
     startClientWithID \
     startServerWithID \
     reloadClientWithID \
     reloadServerWithID \
     stopClientWithID \
     stopServerWithID \
+    isClientRunningWithID \
+    isServerRunningWithID \
     stopAll \
     listInstances \
     setLogCallback; do

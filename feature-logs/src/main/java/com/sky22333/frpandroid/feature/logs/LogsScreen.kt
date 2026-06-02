@@ -59,6 +59,7 @@ data class LogsUiState(
 
 class LogsViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppGraph.repository(application)
+    private val appContext = application.applicationContext
     private val filter = MutableStateFlow(LogsFilter())
     private val frozenLogs = MutableStateFlow<List<FrpLog>>(emptyList())
 
@@ -81,6 +82,11 @@ class LogsViewModel(application: Application) : AndroidViewModel(application) {
     fun setLevel(value: String) = filter.update { it.copy(level = value) }
     fun setType(value: String) = filter.update { it.copy(type = value) }
     fun setPaused(value: Boolean) = filter.update { it.copy(paused = value) }
+    fun exportLogs(uri: Uri, logs: List<FrpLog>) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            writeLogs(appContext, uri, formatLogs(logs))
+        }
+    }
 }
 
 @Composable
@@ -89,11 +95,11 @@ fun LogsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var pendingExportText by remember { mutableStateOf("") }
+    var pendingExportLogs by remember { mutableStateOf<List<FrpLog>>(emptyList()) }
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/plain"),
     ) { uri ->
-        if (uri != null) writeLogs(context, uri, pendingExportText)
+        if (uri != null) viewModel.exportLogs(uri, pendingExportLogs)
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -141,7 +147,7 @@ fun LogsScreen(
                 }
                 FilledTonalButton(
                     onClick = {
-                        pendingExportText = formatLogs(state.logs)
+                        pendingExportLogs = state.logs
                         exportLauncher.launch("frp-android-logs.txt")
                     },
                 ) {

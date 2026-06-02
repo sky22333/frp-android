@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != Intent.ACTION_BOOT_COMPLETED && intent.action != Intent.ACTION_LOCKED_BOOT_COMPLETED) {
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED) {
             return
         }
         val pendingResult = goAsync()
@@ -28,7 +28,6 @@ class BootReceiver : BroadcastReceiver() {
                 autoStartProfiles.forEach { profile ->
                     FrpForegroundService.startProfile(context, profile.id)
                 }
-                repository.setPendingStart(false)
             }.onFailure {
                 repository.setPendingStart(autoStartProfiles.isNotEmpty())
             }

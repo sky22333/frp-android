@@ -22,8 +22,13 @@ class FrpRetryWorker(
         val repository = AppGraph.repository(applicationContext)
         if (!repository.shouldAutoRetryFailures()) return Result.success()
         val profile = repository.getProfile(profileId) ?: return Result.failure()
-        val result = repository.start(profile)
-        return if (result.isSuccess) Result.success() else Result.retry()
+        return runCatching {
+            FrpForegroundService.startProfile(applicationContext, profile.id)
+            Result.success()
+        }.getOrElse {
+            repository.setPendingStart(true)
+            Result.retry()
+        }
     }
 
     companion object {

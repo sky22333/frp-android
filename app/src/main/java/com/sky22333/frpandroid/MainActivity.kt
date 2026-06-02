@@ -1,12 +1,13 @@
 package com.sky22333.frpandroid
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.automirrored.rounded.Article
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Article
 import androidx.compose.material.icons.rounded.Dashboard
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Tune
@@ -22,6 +23,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.core.os.LocaleListCompat
@@ -36,6 +38,7 @@ import androidx.navigation.compose.rememberNavController
 import com.sky22333.frpandroid.core.data.AppGraph
 import com.sky22333.frpandroid.core.data.FrpSettings
 import com.sky22333.frpandroid.core.frp.LanguageMode
+import com.sky22333.frpandroid.core.runtime.FrpForegroundService
 import com.sky22333.frpandroid.core.ui.FrpAndroidTheme
 import com.sky22333.frpandroid.feature.dashboard.DashboardScreen
 import com.sky22333.frpandroid.feature.editor.EditorScreen
@@ -44,16 +47,24 @@ import com.sky22333.frpandroid.feature.profiles.ProfilesScreen
 import com.sky22333.frpandroid.feature.settings.SettingsScreen
 
 class MainActivity : ComponentActivity() {
+    private val startDestination = mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        startDestination.value = intent?.getStringExtra(FrpForegroundService.EXTRA_START_DESTINATION)
         val repository = AppGraph.repository(this)
         setContent {
             val settings by repository.settings.collectAsStateWithLifecycle(initialValue = FrpSettings())
             ApplyLanguage(settings.languageMode)
             FrpAndroidTheme(themeMode = settings.themeMode) {
-                FrpApp()
+                FrpApp(startDestination = startDestination.value)
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        startDestination.value = intent.getStringExtra(FrpForegroundService.EXTRA_START_DESTINATION)
     }
 }
 
@@ -71,15 +82,22 @@ private fun ApplyLanguage(languageMode: LanguageMode) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FrpApp() {
+private fun FrpApp(startDestination: String?) {
     val navController = rememberNavController()
+    LaunchedEffect(startDestination) {
+        if (startDestination == FrpForegroundService.DESTINATION_LOGS) {
+            navController.navigate(Screen.Logs.route) {
+                launchSingleTop = true
+            }
+        }
+    }
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_title)) },
                 actions = {
                     IconButton(onClick = { navController.navigate(Screen.Logs.route) }) {
-                        Icon(Icons.Rounded.Article, contentDescription = stringResource(R.string.nav_logs))
+                        Icon(Icons.AutoMirrored.Rounded.Article, contentDescription = stringResource(R.string.nav_logs))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(),
@@ -89,7 +107,11 @@ private fun FrpApp() {
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Dashboard.route,
+            startDestination = if (startDestination == FrpForegroundService.DESTINATION_LOGS) {
+                Screen.Logs.route
+            } else {
+                Screen.Dashboard.route
+            },
             modifier = Modifier.padding(padding),
         ) {
             frpGraph(navController)
@@ -147,7 +169,7 @@ private sealed class Screen(
 ) {
     data object Dashboard : Screen("dashboard", R.string.nav_dashboard, Icons.Rounded.Dashboard)
     data object Profiles : Screen("profiles", R.string.nav_profiles, Icons.Rounded.Tune)
-    data object Logs : Screen("logs", R.string.nav_logs, Icons.Rounded.Article)
+    data object Logs : Screen("logs", R.string.nav_logs, Icons.AutoMirrored.Rounded.Article)
     data object Settings : Screen("settings", R.string.nav_settings, Icons.Rounded.Settings)
 
     companion object {

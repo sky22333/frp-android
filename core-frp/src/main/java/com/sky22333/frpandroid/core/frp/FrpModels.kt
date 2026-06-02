@@ -40,6 +40,12 @@ data class FrpResult(
     val message: String,
 ) {
     val isSuccess: Boolean = code == null
+    val isAlreadyRunning: Boolean = code == "ALREADY_RUNNING"
+    val isInvalidTempDir: Boolean = code == "INVALID_TEMP_DIR"
+    val isInvalidToml: Boolean = code == "INVALID_TOML"
+    val isAlreadyStopped: Boolean =
+        code == "STOP_FAILED" &&
+            message.contains(Regex("(?i)(not running|already stopped|not found|no such instance)"))
 
     companion object {
         fun fromRaw(raw: String?): FrpResult {

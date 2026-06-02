@@ -65,12 +65,13 @@ class FrpForegroundService : Service() {
                 return@launch
             }
             startForeground(NOTIFICATION_ID, buildNotification(runningCount = 1))
+            repository.initialize()
             repository.getProfile(id)?.let { profile ->
                 val result = repository.start(profile)
-                if (result.isSuccess) {
+                if (FrpRuntimePolicy.isStartSatisfied(result)) {
                     repository.setPendingStart(false)
                 }
-                if (!result.isSuccess && repository.shouldAutoRetryFailures()) {
+                if (FrpRuntimePolicy.shouldRetryStart(result, repository.shouldAutoRetryFailures())) {
                     FrpRetryWorker.enqueue(this@FrpForegroundService, profile.id)
                 }
             }
@@ -95,7 +96,7 @@ class FrpForegroundService : Service() {
 
     private fun syncOnly() {
         scope.launch {
-            repository.syncRuntimeStates()
+            repository.initialize()
             refreshNotificationOrStop()
         }
     }
@@ -196,10 +197,7 @@ class FrpForegroundService : Service() {
         }
 
         fun sync(context: Context) {
-            ContextCompat.startForegroundService(
-                context,
-                Intent(context, FrpForegroundService::class.java).setAction(ACTION_SYNC),
-            )
+            context.startService(Intent(context, FrpForegroundService::class.java).setAction(ACTION_SYNC))
         }
     }
 }

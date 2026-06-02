@@ -1,14 +1,20 @@
 package com.sky22333.frpandroid.core.frp
 
+import java.io.File
 import java.lang.reflect.Proxy
 
 class FrplibBridge {
-    private val frplibClass: Class<*>? = runCatching {
-        Class.forName("io.github.sky22333.frplib.Frplib")
-    }.getOrNull()
+    private var cachedFrplibClass: Class<*>? = null
 
     val isAvailable: Boolean
-        get() = frplibClass != null
+        get() = frplibClass() != null
+
+    fun configureTempDir(directory: File): String =
+        if ((directory.exists() || directory.mkdirs()) && directory.isDirectory) {
+            invokeString("setTempDir", directory.absolutePath)
+        } else {
+            "INVALID_TEMP_DIR: failed to create ${directory.absolutePath}"
+        }
 
     fun startClient(id: String, toml: String): String = invokeString("startClientWithID", id, toml)
     fun startServer(id: String, toml: String): String = invokeString("startServerWithID", id, toml)
@@ -20,7 +26,7 @@ class FrplibBridge {
     fun listInstances(): String = invokeString("listInstances")
 
     fun setLogCallback(sink: FrpLogSink) {
-        val target = frplibClass ?: return
+        val target = frplibClass() ?: return
         val callbackClass = runCatching {
             Class.forName("io.github.sky22333.frplib.FrpLogCallback")
         }.getOrNull() ?: return
@@ -47,7 +53,7 @@ class FrplibBridge {
     }
 
     private fun invokeString(name: String, vararg args: String): String {
-        val target = frplibClass ?: return "FRPLIB_MISSING: frplib AAR is not available"
+        val target = frplibClass() ?: return "FRPLIB_MISSING: frplib AAR is not available"
         return runCatching {
             val types = Array(args.size) { String::class.java }
             target.getMethod(name, *types).invoke(null, *args) as? String ?: ""
@@ -55,4 +61,10 @@ class FrplibBridge {
             "FRPLIB_CALL_FAILED: ${error.message.orEmpty()}"
         }
     }
+
+    private fun frplibClass(): Class<*>? =
+        cachedFrplibClass ?: runCatching {
+            Class.forName("io.github.sky22333.frplib.Frplib")
+        }.getOrNull()?.also { cachedFrplibClass = it }
+
 }

@@ -23,10 +23,33 @@ data class FrpSettings(
     val pendingStart: Boolean = false,
 )
 
+data class FrpDiagnostics(
+    val nativeAvailable: Boolean,
+    val runtimeInitialized: Boolean,
+    val tempDirStatus: String,
+    val runningCount: Int,
+    val failedCount: Int,
+    val pendingStart: Boolean,
+    val lastError: String?,
+)
+
+interface SettingsGateway {
+    val settings: Flow<FrpSettings>
+
+    suspend fun setBootStartEnabled(enabled: Boolean)
+    suspend fun setNetworkReconnectEnabled(enabled: Boolean)
+    suspend fun setAutoRetryEnabled(enabled: Boolean)
+    suspend fun setDiagnosticsSamplingEnabled(enabled: Boolean)
+    suspend fun setLogRetentionDays(days: Int)
+    suspend fun setThemeMode(mode: ThemeMode)
+    suspend fun setLanguageMode(mode: LanguageMode)
+    suspend fun setPendingStart(pending: Boolean)
+}
+
 private val Context.frpSettingsStore by preferencesDataStore("frp_settings")
 
-class SettingsStore(private val context: Context) {
-    val settings: Flow<FrpSettings> = context.frpSettingsStore.data.map { preferences ->
+class SettingsStore(private val context: Context) : SettingsGateway {
+    override val settings: Flow<FrpSettings> = context.frpSettingsStore.data.map { preferences ->
         FrpSettings(
             bootStartEnabled = preferences[Keys.bootStart] ?: false,
             networkReconnectEnabled = preferences[Keys.networkReconnect] ?: true,
@@ -39,14 +62,14 @@ class SettingsStore(private val context: Context) {
         )
     }
 
-    suspend fun setBootStartEnabled(enabled: Boolean) = set(Keys.bootStart, enabled)
-    suspend fun setNetworkReconnectEnabled(enabled: Boolean) = set(Keys.networkReconnect, enabled)
-    suspend fun setAutoRetryEnabled(enabled: Boolean) = set(Keys.autoRetry, enabled)
-    suspend fun setDiagnosticsSamplingEnabled(enabled: Boolean) = set(Keys.diagnosticsSampling, enabled)
-    suspend fun setLogRetentionDays(days: Int) = set(Keys.logRetentionDays, days.coerceIn(1, 365))
-    suspend fun setThemeMode(mode: ThemeMode) = set(Keys.themeMode, mode.name)
-    suspend fun setLanguageMode(mode: LanguageMode) = set(Keys.languageMode, mode.name)
-    suspend fun setPendingStart(pending: Boolean) = set(Keys.pendingStart, pending)
+    override suspend fun setBootStartEnabled(enabled: Boolean) = set(Keys.bootStart, enabled)
+    override suspend fun setNetworkReconnectEnabled(enabled: Boolean) = set(Keys.networkReconnect, enabled)
+    override suspend fun setAutoRetryEnabled(enabled: Boolean) = set(Keys.autoRetry, enabled)
+    override suspend fun setDiagnosticsSamplingEnabled(enabled: Boolean) = set(Keys.diagnosticsSampling, enabled)
+    override suspend fun setLogRetentionDays(days: Int) = set(Keys.logRetentionDays, days.coerceIn(1, 365))
+    override suspend fun setThemeMode(mode: ThemeMode) = set(Keys.themeMode, mode.name)
+    override suspend fun setLanguageMode(mode: LanguageMode) = set(Keys.languageMode, mode.name)
+    override suspend fun setPendingStart(pending: Boolean) = set(Keys.pendingStart, pending)
 
     private suspend fun <T> set(key: Preferences.Key<T>, value: T) {
         context.frpSettingsStore.edit { it[key] = value }

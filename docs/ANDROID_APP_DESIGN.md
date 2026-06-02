@@ -134,13 +134,13 @@ TOML 原文保存，不自动格式化，不删除注释。
 启动：
 
 ```text
-保存配置 -> 校验 TOML -> 启动前台服务 -> 调用 StartClientWithID / StartServerWithID
+setTempDir 成功 -> 保存配置 -> 校验 TOML -> 启动前台服务 -> 调用 startClientWithID / startServerWithID
 ```
 
 停止：
 
 ```text
-调用 StopClientWithID / StopServerWithID -> 更新状态 -> 无运行实例时停止前台服务
+调用 stopClientWithID / stopServerWithID -> 更新状态 -> 无运行实例时停止前台服务
 ```
 
 Reload：
@@ -148,20 +148,21 @@ Reload：
 ```text
 先校验新 TOML
 校验失败：显示 INVALID_TOML，旧实例继续运行
-校验成功：调用 ReloadClientWithID / ReloadServerWithID
+校验成功：调用 reloadClientWithID / reloadServerWithID
 ```
 
 错误处理：
 
 - `""` 表示成功。
-- `ALREADY_RUNNING` 展示为错误提示，不重复启动。
+- `ALREADY_RUNNING` 视为已运行，不重复启动。
+- `INVALID_TEMP_DIR` 阻断启动和 Reload，写入日志和诊断页。
 - 重复 Stop 视为成功 no-op。
 - `INVALID_TOML` 在编辑页展示完整错误。
 - 其他错误写入日志和诊断页。
 
 日志：
 
-- `SetLogCallback` 只注册一次。
+- `setLogCallback` 只注册一次。
 - 生命周期日志保留 `instanceID`。
 - frp 内部日志 `type = "frp"`，`instanceID` 为空。
 - 日志写入内存 ring buffer，并批量持久化。
@@ -224,7 +225,6 @@ Manifest：
     android:exported="false">
     <intent-filter>
         <action android:name="android.intent.action.BOOT_COMPLETED" />
-        <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
     </intent-filter>
 </receiver>
 ```
