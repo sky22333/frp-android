@@ -15,6 +15,8 @@ dependencies {
     implementation(project(":core-data"))
     implementation(project(":core-runtime"))
     implementation(project(":core-ui"))
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.foundation)
     implementation(libs.compose.material3)
