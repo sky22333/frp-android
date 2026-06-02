@@ -1,7 +1,7 @@
 [versions]
-agp = "9.0.0"
-kotlin = "2.2.21"
-ksp = "2.2.21-2.0.4"
+agp = "9.0.1"
+kotlin = "2.3.21"
+ksp = "2.3.9"
 compileSdk = "36"
 minSdk = "23"
 targetSdk = "36"
