@@ -64,6 +64,8 @@
 
 | 日期 | 更新内容 | 影响范围 | 下一步 |
 | --- | --- | --- | --- |
+| 2026-06-03 | 接入项目根目录 `res/` 中的 PNG logo：复制标准密度 `mipmap-*` 到 `app/src/main/res` 作为 launcher/round icon，并复制同源资源到 `core-runtime/src/main/res` 作为前台服务通知图标；Manifest 和通知构建统一引用项目 logo 资源，移除系统内置通知图标依赖 | `app`、`core-runtime`、resources、docs | 继续由 CI/真机确认 launcher、最近任务和通知栏图标显示效果，尤其通知 small icon 在不同系统上的单色渲染 |
+| 2026-06-03 | 修复 CI Kotlin 编译失败：删除 Logs/Profiles 中误导入的 `androidx.compose.foundation.layout.weight` 内部属性，让 `Modifier.weight()` 在 Row/Column 作用域内正确解析；同时收敛 Dashboard 运行状态行的 `lastError` 表达式，消除无意义 safe-call 警告 | `feature-logs`、`feature-profiles`、`feature-dashboard`、docs | 继续以 CI 结果校准本地无法执行的 Android 编译问题，并保持 UI 改动最小闭环 |
 | 2026-06-03 | 补齐 `app` 直接使用 `collectAsStateWithLifecycle` 所需的 `androidx.lifecycle:lifecycle-runtime-compose` 依赖 | `app` | 继续保持模块依赖与实际 imports 显式一致 |
 | 2026-06-03 | 修复停止服务超时/重启路径状态错乱：对齐 frplib `stopping` 状态，Repository 串行化 native 操作，单实例和 stopAll 在同一操作锁内回查 `listInstances()`，Dashboard restart 仅在 stop 成功后 start，前台服务把 Running/Stopping 都视为 active；补状态机测试 | `core-data`、`core-frp`、`core-runtime`、`feature-dashboard`、tests | 下一步补 UI 操作 loading/disabled 和停止失败的页面级错误反馈 |
 | 2026-06-03 | 审查并修正 stop 失败相关单测预期：删除配置停止失败测试显式模拟 native 仍 Running，并新增 native `Stopping` 同步覆盖 | tests、docs | 下一步补 Dashboard restart、runtime 操作串行化和前台服务 active 判断测试 |

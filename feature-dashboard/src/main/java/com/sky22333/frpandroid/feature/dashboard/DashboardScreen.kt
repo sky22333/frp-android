@@ -378,13 +378,14 @@ private fun ProfileRuntimeCard(
 ) {
     val running = state?.state == FrpInstanceStatus.Running || state?.state == FrpInstanceStatus.Stopping
     val stopping = state?.state == FrpInstanceStatus.Stopping
+    val lastError = state?.lastError
     FrpListRow(
         modifier = Modifier.padding(horizontal = 16.dp),
         icon = if (profile.type == FrpType.Client) Icons.Rounded.CloudSync else Icons.Rounded.Dns,
         title = profile.name,
         subtitle = "${profile.type.name.lowercase()} · ${state?.state?.name ?: FrpInstanceStatus.Stopped.name}",
-        status = state?.lastError,
-        statusRunning = running && state?.lastError.isNullOrBlank(),
+        status = lastError,
+        statusRunning = running && lastError.isNullOrBlank(),
         trailing = {
             Row {
                 IconButton(
