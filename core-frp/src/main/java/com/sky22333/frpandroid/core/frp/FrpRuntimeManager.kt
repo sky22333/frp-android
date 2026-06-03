@@ -100,6 +100,7 @@ class FrpRuntimeManager(
         }
         val status = when (parts[2].lowercase()) {
             "running" -> FrpInstanceStatus.Running
+            "stopping" -> FrpInstanceStatus.Stopping
             "failed" -> FrpInstanceStatus.Failed
             else -> FrpInstanceStatus.Stopped
         }

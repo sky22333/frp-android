@@ -7,4 +7,5 @@
     <string name="logs_copy_errors">Copy errors</string>
     <string name="logs_export">Export logs</string>
     <string name="logs_empty">No logs</string>
+    <string name="logs_all">All</string>
 </resources>

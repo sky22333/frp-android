@@ -130,13 +130,94 @@ class FrpRepositoryTest {
             upsertProfile(profile.toEntity())
             upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null).toEntity())
         }
-        val runtime = FakeRuntime(stopResult = FrpResult.fromRaw("STOP_FAILED: socket close failed"))
+        val runtime = FakeRuntime(
+            stopResult = FrpResult.fromRaw("STOP_FAILED: socket close failed"),
+            listInstancesResult = listOf(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null)),
+        )
         val repository = repository(dao, runtime)
 
         repository.deleteProfile(profile.id)
 
         assertEquals(1, runtime.stopCalls)
         assertEquals(profile.id, dao.getProfile(profile.id)?.id)
+        assertEquals(FrpInstanceStatus.Running, dao.runtimeState(profile.id)?.state)
+    }
+
+    @Test
+    fun stopTimedOutSyncsNativeRunningState() = runTest {
+        val dao = FakeFrpDao().apply {
+            upsertProfile(profile.toEntity())
+            upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null).toEntity())
+        }
+        val runtime = FakeRuntime(
+            stopResult = FrpResult.fromRaw("STOP_FAILED: stop client instance \"client-a\" timed out"),
+            listInstancesResult = listOf(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null)),
+        )
+        val repository = repository(dao, runtime)
+
+        val result = repository.stop(profile)
+
+        assertEquals("STOP_FAILED", result.code)
+        assertEquals(1, runtime.stopCalls)
+        assertEquals(1, runtime.listInstancesCalls)
+        assertEquals(FrpInstanceStatus.Running, dao.runtimeState(profile.id)?.state)
+        assertNull(dao.runtimeState(profile.id)?.lastError)
+    }
+
+    @Test
+    fun stopFailureMarksStoppedWhenNativeInstanceDisappeared() = runTest {
+        val dao = FakeFrpDao().apply {
+            upsertProfile(profile.toEntity())
+            upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null).toEntity())
+        }
+        val runtime = FakeRuntime(
+            stopResult = FrpResult.fromRaw("STOP_FAILED: stop client instance \"client-a\" timed out"),
+            listInstancesResult = emptyList(),
+        )
+        val repository = repository(dao, runtime)
+
+        repository.stop(profile)
+
+        assertEquals(FrpInstanceStatus.Stopped, dao.runtimeState(profile.id)?.state)
+        assertNull(dao.runtimeState(profile.id)?.lastError)
+    }
+
+    @Test
+    fun stopTimedOutSyncsNativeStoppingState() = runTest {
+        val dao = FakeFrpDao().apply {
+            upsertProfile(profile.toEntity())
+            upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null).toEntity())
+        }
+        val runtime = FakeRuntime(
+            stopResult = FrpResult.fromRaw("STOP_FAILED: stop client instance \"client-a\" timed out"),
+            listInstancesResult = listOf(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Stopping, null)),
+        )
+        val repository = repository(dao, runtime)
+
+        repository.stop(profile)
+
+        assertEquals(1, runtime.listInstancesCalls)
+        assertEquals(FrpInstanceStatus.Stopping, dao.runtimeState(profile.id)?.state)
+        assertNull(dao.runtimeState(profile.id)?.lastError)
+    }
+
+    @Test
+    fun stopAllFailureSyncsNativeStates() = runTest {
+        val dao = FakeFrpDao().apply {
+            upsertProfile(profile.toEntity())
+            upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null).toEntity())
+        }
+        val runtime = FakeRuntime(
+            stopAllResult = FrpResult.fromRaw("STOP_FAILED: stop all timed out"),
+            listInstancesResult = listOf(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null)),
+        )
+        val repository = repository(dao, runtime)
+
+        val result = repository.stopAll()
+
+        assertEquals("STOP_FAILED", result.code)
+        assertEquals(1, runtime.stopAllCalls)
+        assertEquals(1, runtime.listInstancesCalls)
         assertEquals(FrpInstanceStatus.Running, dao.runtimeState(profile.id)?.state)
     }
 
@@ -222,6 +303,19 @@ class FrpRepositoryTest {
         assertNull(dao.runtimeState(profile.id)?.lastError)
     }
 
+    @Test
+    fun networkRecoveryDoesNotRestartStoppingProfiles() = runTest {
+        val dao = FakeFrpDao().apply {
+            upsertProfile(profile.toEntity())
+            upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Stopping, null).toEntity())
+        }
+        val repository = repository(dao, FakeRuntime())
+
+        val profiles = repository.getNetworkRecoverableProfiles()
+
+        assertTrue(profiles.isEmpty())
+    }
+
     private fun TestScope.repository(dao: FakeFrpDao, runtime: FakeRuntime): FrpRepository =
         FrpRepository(
             dao = dao,
@@ -239,11 +333,14 @@ private class FakeRuntime(
     var startResult: FrpResult = FrpResult(code = null, message = ""),
     var reloadResult: FrpResult = FrpResult(code = null, message = ""),
     var stopResult: FrpResult = FrpResult(code = null, message = ""),
+    var stopAllResult: FrpResult = FrpResult(code = null, message = ""),
     var listInstancesResult: List<FrpRuntimeState> = emptyList(),
 ) : FrpRuntimeGateway {
     var startCalls = 0
     var reloadCalls = 0
     var stopCalls = 0
+    var stopAllCalls = 0
+    var listInstancesCalls = 0
 
     override val isNativeAvailable: Boolean = true
 
@@ -262,8 +359,14 @@ private class FakeRuntime(
         stopCalls += 1
         return stopResult
     }
-    override suspend fun stopAll(): FrpResult = FrpResult(code = null, message = "")
-    override suspend fun listInstances(): List<FrpRuntimeState> = listInstancesResult
+    override suspend fun stopAll(): FrpResult {
+        stopAllCalls += 1
+        return stopAllResult
+    }
+    override suspend fun listInstances(): List<FrpRuntimeState> {
+        listInstancesCalls += 1
+        return listInstancesResult
+    }
 }
 
 private class FakeSettings : SettingsGateway {
@@ -333,7 +436,9 @@ private class FakeFrpDao : FrpDao {
     ): Flow<List<FrpLogEntity>> = flowOf(logs.drop(offset).take(limit))
 
     override suspend fun insertLogs(logs: List<FrpLogEntity>) {
-        this.logs += logs
+        this.logs += logs.mapIndexed { index, log ->
+            if (log.uid > 0) log else log.copy(uid = this.logs.size + index + 1L)
+        }
     }
     override suspend fun deleteLogsOlderThan(olderThan: Long) {
         logs.removeAll { it.time < olderThan }

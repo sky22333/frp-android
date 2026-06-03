@@ -98,6 +98,15 @@ type:id:state
 type:id:state:lastError
 ```
 
+`state` 按 frplib 实际返回值处理，当前 Android 侧至少识别：
+
+```text
+running
+stopping
+failed
+stopped
+```
+
 ## 日志
 
 ```kotlin

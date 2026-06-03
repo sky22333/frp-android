@@ -114,7 +114,7 @@ data class FrpProfile(
 data class FrpRuntimeState(
     val id: String,
     val type: FrpType,
-    val state: State, // Stopped / Running / Failed
+    val state: State, // Stopped / Stopping / Running / Failed
     val lastError: String?
 )
 
@@ -165,7 +165,7 @@ Reload：
 - `setLogCallback` 只注册一次。
 - 生命周期日志保留 `instanceID`。
 - frp 内部日志 `type = "frp"`，`instanceID` 为空。
-- 日志写入内存 ring buffer，并批量持久化。
+- 日志先进入内存批量写入缓冲，再批量持久化；查询和导出统一读取数据库。
 
 ## 前台服务
 
@@ -251,6 +251,7 @@ Manifest：
 - 浅色、干净、柔和，统一。
 - 低饱和青绿 / 蓝灰作为主色。
 - 禁止大红、大蓝、大紫作为主视觉色。
+- 根页面、顶部栏、底部导航、系统状态栏和系统导航栏使用同一主题背景色，不额外叠加遮罩层。
 - 错误色只用于小面积提示。
 - 扁平式圆角、清晰状态、低噪音。
 - 禁止多层卡片叠加

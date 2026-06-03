@@ -89,8 +89,7 @@ class FrpForegroundService : Service() {
     private fun stopAll() {
         scope.launch {
             repository.stopAll()
-            ServiceCompat.stopForeground(this@FrpForegroundService, ServiceCompat.STOP_FOREGROUND_REMOVE)
-            stopSelf()
+            refreshNotificationOrStop()
         }
     }
 
@@ -102,7 +101,9 @@ class FrpForegroundService : Service() {
     }
 
     private suspend fun refreshNotificationOrStop() {
-        val count = repository.runtimeStates.first().count { it.state == FrpInstanceStatus.Running }
+        val count = repository.runtimeStates.first().count {
+            it.state == FrpInstanceStatus.Running || it.state == FrpInstanceStatus.Stopping
+        }
         if (count <= 0) {
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()

@@ -32,10 +32,10 @@ class FrpRepository(
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
     private val logFlushDelayMs: Long = 750,
 ) {
-    private val recentLogBuffer = ArrayDeque<FrpLog>()
     private val pendingLogBuffer = ArrayDeque<FrpLog>()
     private val logMutex = Mutex()
     private val initMutex = Mutex()
+    private val runtimeOperationMutex = Mutex()
     private var flushJob: Job? = null
     private var initialized = false
     private var runtimeInitResult = FrpResult(code = null, message = "")
@@ -83,7 +83,7 @@ class FrpRepository(
         val profile = dao.getProfile(id)?.toModel()
         if (profile != null) {
             val state = dao.getRuntimeStates().firstOrNull { it.id == id }?.state
-            if (state == FrpInstanceStatus.Running || state == FrpInstanceStatus.Failed) {
+            if (state == FrpInstanceStatus.Running || state == FrpInstanceStatus.Stopping || state == FrpInstanceStatus.Failed) {
                 val stopResult = stop(profile)
                 if (!stopResult.isSuccess) return
             }
@@ -129,12 +129,14 @@ class FrpRepository(
 
     suspend fun isProfileActive(id: String): Boolean {
         val state = dao.getRuntimeStates().firstOrNull { it.id == id }?.state
-        return state == FrpInstanceStatus.Running || state == FrpInstanceStatus.Failed
+        return state == FrpInstanceStatus.Running || state == FrpInstanceStatus.Stopping || state == FrpInstanceStatus.Failed
     }
 
     suspend fun start(profile: FrpProfile): FrpResult {
-        val ready = ensureRuntimeReady()
-        val result = if (ready.isSuccess) runtimeManager.start(profile) else ready
+        val result = runtimeOperationMutex.withLock {
+            val ready = ensureRuntimeReady()
+            if (ready.isSuccess) runtimeManager.start(profile) else ready
+        }
         when {
             result.isSuccess || result.isAlreadyRunning -> {
                 dao.upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null).toEntity())
@@ -158,8 +160,10 @@ class FrpRepository(
     }
 
     suspend fun reload(profile: FrpProfile): FrpResult {
-        val ready = ensureRuntimeReady()
-        val result = if (ready.isSuccess) runtimeManager.reload(profile) else ready
+        val result = runtimeOperationMutex.withLock {
+            val ready = ensureRuntimeReady()
+            if (ready.isSuccess) runtimeManager.reload(profile) else ready
+        }
         when {
             result.isSuccess || result.isAlreadyRunning -> {
                 dao.upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null).toEntity())
@@ -195,17 +199,27 @@ class FrpRepository(
     }
 
     suspend fun stop(profile: FrpProfile): FrpResult {
-        val result = runtimeManager.stop(profile.id, profile.type)
-        if (result.isSuccess) {
-            dao.upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Stopped, null).toEntity())
+        val result = runtimeOperationMutex.withLock {
+            dao.upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Stopping, null).toEntity())
+            runtimeManager.stop(profile.id, profile.type).also {
+                syncRuntimeStatesFromNative()
+            }
         }
         appendLifecycleLog(profile.id, profile.type, result, "stop")
         return result
     }
 
     suspend fun stopAll(): FrpResult {
-        val result = runtimeManager.stopAll()
-        if (result.isSuccess) dao.clearRuntimeStates()
+        val result = runtimeOperationMutex.withLock {
+            dao.getRuntimeStates()
+                .filter { it.state == FrpInstanceStatus.Running || it.state == FrpInstanceStatus.Stopping }
+                .forEach { state ->
+                    dao.upsertRuntimeState(state.toModel().copy(state = FrpInstanceStatus.Stopping, lastError = null).toEntity())
+            }
+            runtimeManager.stopAll().also {
+                syncRuntimeStatesFromNative()
+            }
+        }
         appendLog(FrpLog("", "frp", if (result.isSuccess) "info" else "error", "stopAll ${result.message}", System.currentTimeMillis()))
         return result
     }
@@ -213,6 +227,12 @@ class FrpRepository(
     suspend fun syncRuntimeStates(): List<FrpRuntimeState> {
         val ready = ensureRuntimeReady()
         if (!ready.isSuccess) return emptyList()
+        return runtimeOperationMutex.withLock {
+            syncRuntimeStatesFromNative()
+        }
+    }
+
+    private suspend fun syncRuntimeStatesFromNative(): List<FrpRuntimeState> {
         val states = runtimeManager.listInstances()
         val nativeIds = states.map { it.id }.toSet()
         dao.getRuntimeStates()
@@ -269,9 +289,7 @@ class FrpRepository(
     private suspend fun appendLog(log: FrpLog) {
         logMutex.withLock {
             val safeLog = log.copy(message = redact(log.message))
-            recentLogBuffer.addLast(safeLog)
             pendingLogBuffer.addLast(safeLog)
-            while (recentLogBuffer.size > 1000) recentLogBuffer.removeFirst()
             if (flushJob?.isActive != true) {
                 flushJob = scope.launch {
                     delay(logFlushDelayMs)
@@ -282,12 +300,15 @@ class FrpRepository(
     }
 
     private suspend fun flushLogs() {
-        val batch = logMutex.withLock {
-            val items = pendingLogBuffer.toList()
-            pendingLogBuffer.clear()
-            items
+        while (true) {
+            val batch = logMutex.withLock {
+                val items = pendingLogBuffer.toList()
+                pendingLogBuffer.clear()
+                items
+            }
+            if (batch.isEmpty()) return
+            dao.insertLogs(batch.map { it.toEntity() })
         }
-        if (batch.isNotEmpty()) dao.insertLogs(batch.map { it.toEntity() })
     }
 
     private fun redact(message: String): String =

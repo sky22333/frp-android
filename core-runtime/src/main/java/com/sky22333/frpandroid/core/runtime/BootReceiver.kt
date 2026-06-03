@@ -17,21 +17,22 @@ class BootReceiver : BroadcastReceiver() {
         }
         val pendingResult = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-            val repository = AppGraph.repository(context)
-            val settings = repository.settings.first()
-            if (!settings.bootStartEnabled) {
-                pendingResult.finish()
-                return@launch
-            }
-            val autoStartProfiles = repository.getAutoStartProfiles()
-            runCatching {
-                autoStartProfiles.forEach { profile ->
-                    FrpForegroundService.startProfile(context, profile.id)
+            try {
+                val repository = AppGraph.repository(context)
+                val settings = repository.settings.first()
+                if (settings.bootStartEnabled) {
+                    val autoStartProfiles = repository.getAutoStartProfiles()
+                    runCatching {
+                        autoStartProfiles.forEach { profile ->
+                            FrpForegroundService.startProfile(context, profile.id)
+                        }
+                    }.onFailure {
+                        repository.setPendingStart(autoStartProfiles.isNotEmpty())
+                    }
                 }
-            }.onFailure {
-                repository.setPendingStart(autoStartProfiles.isNotEmpty())
+            } finally {
+                pendingResult.finish()
             }
-            pendingResult.finish()
         }
     }
 }

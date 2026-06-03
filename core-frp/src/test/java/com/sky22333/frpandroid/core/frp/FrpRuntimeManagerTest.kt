@@ -30,6 +30,17 @@ class FrpRuntimeManagerTest {
     }
 
     @Test
+    fun parsesStoppingInstanceLine() {
+        val state = manager.parseInstanceLine("server:edge:stopping")
+
+        requireNotNull(state)
+        assertEquals("edge", state.id)
+        assertEquals(FrpType.Server, state.type)
+        assertEquals(FrpInstanceStatus.Stopping, state.state)
+        assertNull(state.lastError)
+    }
+
+    @Test
     fun ignoresUnknownLine() {
         assertNull(manager.parseInstanceLine("bad-data"))
         assertNull(manager.parseInstanceLine("proxy:id:running"))

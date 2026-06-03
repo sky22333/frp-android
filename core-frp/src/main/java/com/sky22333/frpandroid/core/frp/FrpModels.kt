@@ -7,6 +7,7 @@ enum class FrpType {
 
 enum class FrpInstanceStatus {
     Stopped,
+    Stopping,
     Running,
     Failed,
 }
@@ -33,6 +34,7 @@ data class FrpLog(
     val level: String,
     val message: String,
     val time: Long,
+    val uid: Long = 0,
 )
 
 data class FrpResult(

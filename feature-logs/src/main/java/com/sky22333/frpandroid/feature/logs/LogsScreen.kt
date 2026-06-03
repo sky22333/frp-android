@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.ListItem
@@ -127,7 +127,7 @@ fun LogsScreen(
                     FilterChip(
                         selected = state.filter.type == type,
                         onClick = { viewModel.setType(type) },
-                        label = { Text(type.ifBlank { "all" }) },
+                        label = { Text(type.ifBlank { stringResource(R.string.logs_all) }) },
                     )
                 }
             }
@@ -136,7 +136,7 @@ fun LogsScreen(
                     FilterChip(
                         selected = state.filter.level == level,
                         onClick = { viewModel.setLevel(level) },
-                        label = { Text(level.ifBlank { "all" }) },
+                        label = { Text(level.ifBlank { stringResource(R.string.logs_all) }) },
                     )
                 }
             }
@@ -160,7 +160,10 @@ fun LogsScreen(
             Text(stringResource(R.string.logs_empty), modifier = Modifier.padding(16.dp))
         }
         LazyColumn(Modifier.fillMaxWidth()) {
-            items(state.logs, key = { "${it.time}-${it.instanceId}-${it.message.hashCode()}" }) { log ->
+            itemsIndexed(
+                state.logs,
+                key = { index, log -> if (log.uid > 0) log.uid else "${log.time}-${log.instanceId}-$index" },
+            ) { _, log ->
                 ListItem(
                     headlineContent = { Text("[${log.level}] ${log.message}") },
                     supportingContent = { Text("${log.type}/${log.instanceId.ifBlank { "-" }} · ${log.time}") },

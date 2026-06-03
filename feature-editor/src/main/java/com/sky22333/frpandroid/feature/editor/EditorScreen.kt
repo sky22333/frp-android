@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -28,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.size
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -47,6 +49,7 @@ data class EditorUiState(
     val toml: String = "",
     val validationMessage: String? = null,
     val validationError: Boolean = false,
+    val isBusy: Boolean = false,
 )
 
 class EditorViewModel(application: Application) : AndroidViewModel(application) {
@@ -86,29 +89,41 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     fun save() {
         val state = mutableState.value
         val profile = state.profile ?: return
+        if (state.isBusy) return
         viewModelScope.launch {
-            val updated = profile.copy(name = state.name, toml = state.toml)
-            repository.upsertProfile(updated)
-            mutableState.update { it.copy(profile = updated) }
+            mutableState.update { it.copy(isBusy = true) }
+            try {
+                val updated = profile.copy(name = state.name, toml = state.toml)
+                repository.upsertProfile(updated)
+                mutableState.update { it.copy(profile = updated) }
+            } finally {
+                mutableState.update { it.copy(isBusy = false) }
+            }
         }
     }
 
     fun saveAndRestart(context: Context) {
         val state = mutableState.value
         val profile = state.profile ?: return
+        if (state.isBusy) return
         viewModelScope.launch {
-            val updated = profile.copy(name = state.name, toml = state.toml)
-            val wasActive = repository.isProfileActive(updated.id)
-            val result = repository.saveAndRestart(updated)
-            if (result.isSuccess && !wasActive) {
-                FrpForegroundService.startProfile(context, updated.id)
-            }
-            mutableState.update {
-                it.copy(
-                    profile = if (result.isSuccess || result.isAlreadyRunning) updated else profile,
-                    validationMessage = if (result.isSuccess) null else result.message,
-                    validationError = !result.isSuccess,
-                )
+            mutableState.update { it.copy(isBusy = true) }
+            try {
+                val updated = profile.copy(name = state.name, toml = state.toml)
+                val wasActive = repository.isProfileActive(updated.id)
+                val result = repository.saveAndRestart(updated)
+                if (result.isSuccess && !wasActive) {
+                    FrpForegroundService.startProfile(context, updated.id)
+                }
+                mutableState.update {
+                    it.copy(
+                        profile = if (result.isSuccess || result.isAlreadyRunning) updated else profile,
+                        validationMessage = if (result.isSuccess) null else result.message,
+                        validationError = !result.isSuccess,
+                    )
+                }
+            } finally {
+                mutableState.update { it.copy(isBusy = false) }
             }
         }
     }
@@ -177,14 +192,18 @@ fun EditorScreen(
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilledTonalButton(onClick = { viewModel.validate(validText) }) {
+            FilledTonalButton(onClick = { viewModel.validate(validText) }, enabled = !state.isBusy) {
                 Text(stringResource(R.string.editor_validate))
             }
-            FilledTonalButton(onClick = viewModel::save) {
+            FilledTonalButton(onClick = viewModel::save, enabled = !state.isBusy) {
                 Text(stringResource(R.string.editor_save))
             }
-            Button(onClick = { saveAndRestartWithPermission() }) {
-                Text(stringResource(R.string.editor_save_restart))
+            Button(onClick = { saveAndRestartWithPermission() }, enabled = !state.isBusy) {
+                if (state.isBusy) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(stringResource(R.string.editor_save_restart))
+                }
             }
         }
     }

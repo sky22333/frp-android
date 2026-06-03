@@ -50,7 +50,14 @@ data class FrpLogEntity(
     val message: String,
     val time: Long,
 ) {
-    fun toModel(): FrpLog = FrpLog(instanceId, type, level, message, time)
+    fun toModel(): FrpLog = FrpLog(
+        instanceId = instanceId,
+        type = type,
+        level = level,
+        message = message,
+        time = time,
+        uid = uid,
+    )
 }
 
 class FrpTypeConverters {
@@ -149,4 +156,4 @@ fun FrpRuntimeState.toEntity(): FrpRuntimeStateEntity =
     FrpRuntimeStateEntity(id, type, state, lastError)
 
 fun FrpLog.toEntity(): FrpLogEntity =
-    FrpLogEntity(instanceId = instanceId, type = type, level = level, message = message, time = time)
+    FrpLogEntity(uid = uid, instanceId = instanceId, type = type, level = level, message = message, time = time)

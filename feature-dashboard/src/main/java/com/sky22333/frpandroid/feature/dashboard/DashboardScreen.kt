@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -58,10 +60,12 @@ import com.sky22333.frpandroid.core.ui.ErrorText
 import com.sky22333.frpandroid.core.ui.InfoCard
 import com.sky22333.frpandroid.core.ui.SectionTitle
 import com.sky22333.frpandroid.core.ui.StatusChip
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class DashboardUiState(
@@ -69,42 +73,98 @@ data class DashboardUiState(
     val profiles: List<FrpProfile> = emptyList(),
     val states: List<FrpRuntimeState> = emptyList(),
     val settings: FrpSettings = FrpSettings(),
+    val busyProfileIds: Set<String> = emptySet(),
+    val stopAllBusy: Boolean = false,
 )
+
+private enum class PendingRuntimeAction {
+    Start,
+    Restart,
+}
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppGraph.repository(application)
-    private val selectedType = kotlinx.coroutines.flow.MutableStateFlow(FrpType.Client)
+    private val selectedType = MutableStateFlow(FrpType.Client)
+    private val busyProfileIds = MutableStateFlow<Set<String>>(emptySet())
+    private val stopAllBusy = MutableStateFlow(false)
 
-    val uiState: StateFlow<DashboardUiState> = combine(
+    private val baseUiState = combine(
         selectedType,
         repository.profiles,
         repository.runtimeStates,
         repository.settings,
     ) { type, profiles, states, settings ->
         DashboardUiState(type, profiles.filter { it.type == type }, states, settings)
+    }
+
+    val uiState: StateFlow<DashboardUiState> = combine(
+        baseUiState,
+        busyProfileIds,
+        stopAllBusy,
+    ) { state, busyIds, allBusy ->
+        state.copy(busyProfileIds = busyIds, stopAllBusy = allBusy)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardUiState())
+
+    init {
+        viewModelScope.launch {
+            repository.runtimeStates.collect { states ->
+                val knownIds = states.map { it.id }.toSet()
+                busyProfileIds.update { busy -> busy - knownIds }
+                if (states.none { it.state == FrpInstanceStatus.Stopping }) {
+                    stopAllBusy.value = false
+                }
+            }
+        }
+    }
 
     fun selectType(type: FrpType) {
         selectedType.value = type
     }
 
     fun stopAll(context: Context) {
-        FrpForegroundService.stopAll(context)
+        if (stopAllBusy.value) return
+        stopAllBusy.value = true
+        runCatching {
+            FrpForegroundService.stopAll(context)
+        }.onFailure {
+            stopAllBusy.value = false
+        }
     }
 
     fun start(context: Context, profile: FrpProfile) {
-        FrpForegroundService.startProfile(context, profile.id)
+        if (!markBusy(profile.id)) return
+        runCatching {
+            FrpForegroundService.startProfile(context, profile.id)
+        }.onFailure {
+            busyProfileIds.update { it - profile.id }
+        }
     }
 
     fun stop(context: Context, profile: FrpProfile) {
-        FrpForegroundService.stopProfile(context, profile.id)
+        if (!markBusy(profile.id)) return
+        runCatching {
+            FrpForegroundService.stopProfile(context, profile.id)
+        }.onFailure {
+            busyProfileIds.update { it - profile.id }
+        }
     }
 
     fun restart(context: Context, profile: FrpProfile) {
+        if (!markBusy(profile.id)) return
         viewModelScope.launch {
-            repository.stop(profile)
-            FrpForegroundService.startProfile(context, profile.id)
+            val result = repository.stop(profile)
+            if (result.isSuccess) {
+                FrpForegroundService.startProfile(context, profile.id)
+            } else {
+                busyProfileIds.update { it - profile.id }
+            }
         }
+    }
+
+    private fun markBusy(id: String): Boolean {
+        if (id in busyProfileIds.value) return false
+        busyProfileIds.update { it + id }
+        return true
     }
 }
 
@@ -116,26 +176,37 @@ fun DashboardScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val active = state.states.count { it.state == FrpInstanceStatus.Running || it.state == FrpInstanceStatus.Stopping }
     val running = state.states.count { it.state == FrpInstanceStatus.Running }
     val failed = state.states.count { it.state == FrpInstanceStatus.Failed }
     var pendingStartProfile by remember { mutableStateOf<FrpProfile?>(null) }
+    var pendingRuntimeAction by remember { mutableStateOf<PendingRuntimeAction?>(null) }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
         val profile = pendingStartProfile
+        val action = pendingRuntimeAction
         pendingStartProfile = null
+        pendingRuntimeAction = null
         if (granted && profile != null) {
-            viewModel.start(context, profile)
+            when (action) {
+                PendingRuntimeAction.Restart -> viewModel.restart(context, profile)
+                else -> viewModel.start(context, profile)
+            }
         }
     }
 
-    fun startWithPermission(profile: FrpProfile) {
+    fun runWithNotificationPermission(profile: FrpProfile, action: PendingRuntimeAction) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
         ) {
-            viewModel.start(context, profile)
+            when (action) {
+                PendingRuntimeAction.Start -> viewModel.start(context, profile)
+                PendingRuntimeAction.Restart -> viewModel.restart(context, profile)
+            }
         } else {
             pendingStartProfile = profile
+            pendingRuntimeAction = action
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
@@ -156,15 +227,22 @@ fun DashboardScreen(
                 ) {
                     Column {
                         Text(
-                            text = if (running > 0) stringResource(R.string.dashboard_running) else stringResource(R.string.dashboard_stopped),
+                            text = if (active > 0) stringResource(R.string.dashboard_running) else stringResource(R.string.dashboard_stopped),
                             style = MaterialTheme.typography.headlineMedium,
-                            color = if (running > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (active > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(stringResource(R.string.dashboard_instances_summary, running, failed))
                     }
-                    FilledTonalButton(onClick = { viewModel.stopAll(context) }) {
-                        Icon(Icons.Rounded.Stop, contentDescription = stringResource(R.string.dashboard_stop_all))
+                    FilledTonalButton(
+                        onClick = { viewModel.stopAll(context) },
+                        enabled = active > 0 && !state.stopAllBusy,
+                    ) {
+                        if (state.stopAllBusy) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Rounded.Stop, contentDescription = stringResource(R.string.dashboard_stop_all))
+                        }
                         Text(stringResource(R.string.dashboard_stop_all), modifier = Modifier.padding(start = 8.dp))
                     }
                 }
@@ -177,7 +255,7 @@ fun DashboardScreen(
             ) {
                 StatusChip(
                     text = stringResource(R.string.dashboard_foreground_service),
-                    running = running > 0,
+                    running = active > 0,
                     modifier = Modifier.weight(1f),
                 )
                 StatusChip(
@@ -211,18 +289,10 @@ fun DashboardScreen(
             ProfileRuntimeCard(
                 profile = profile,
                 state = runtimeState,
-                onStart = { startWithPermission(profile) },
+                busy = profile.id in state.busyProfileIds,
+                onStart = { runWithNotificationPermission(profile, PendingRuntimeAction.Start) },
                 onStop = { viewModel.stop(context, profile) },
-                onRestart = {
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-                    ) {
-                        viewModel.restart(context, profile)
-                    } else {
-                        pendingStartProfile = profile
-                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    }
-                },
+                onRestart = { runWithNotificationPermission(profile, PendingRuntimeAction.Restart) },
             )
         }
         item {
@@ -260,11 +330,13 @@ private fun TypeSelector(selectedType: FrpType, onSelect: (FrpType) -> Unit) {
 private fun ProfileRuntimeCard(
     profile: FrpProfile,
     state: FrpRuntimeState?,
+    busy: Boolean,
     onStart: () -> Unit,
     onStop: () -> Unit,
     onRestart: () -> Unit,
 ) {
-    val running = state?.state == FrpInstanceStatus.Running
+    val running = state?.state == FrpInstanceStatus.Running || state?.state == FrpInstanceStatus.Stopping
+    val stopping = state?.state == FrpInstanceStatus.Stopping
     InfoCard(
         modifier = Modifier.padding(horizontal = 16.dp),
         icon = if (profile.type == FrpType.Client) Icons.Rounded.CloudSync else Icons.Rounded.Dns,
@@ -272,13 +344,20 @@ private fun ProfileRuntimeCard(
         subtitle = "${profile.type.name.lowercase()} · ${state?.state?.name ?: FrpInstanceStatus.Stopped.name}",
         trailing = {
             Row {
-                IconButton(onClick = if (running) onStop else onStart) {
-                    Icon(
-                        imageVector = if (running) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,
-                        contentDescription = stringResource(if (running) R.string.dashboard_stop else R.string.dashboard_start),
-                    )
+                IconButton(
+                    onClick = if (running) onStop else onStart,
+                    enabled = !busy && !stopping,
+                ) {
+                    if (busy) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(
+                            imageVector = if (running) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,
+                            contentDescription = stringResource(if (running) R.string.dashboard_stop else R.string.dashboard_start),
+                        )
+                    }
                 }
-                IconButton(onClick = onRestart) {
+                IconButton(onClick = onRestart, enabled = !busy && !stopping) {
                     Icon(
                         imageVector = Icons.Rounded.RestartAlt,
                         contentDescription = stringResource(R.string.dashboard_restart),

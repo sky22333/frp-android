@@ -1,9 +1,13 @@
 package com.sky22333.frpandroid
 
 import android.content.Intent
+import android.content.Context
+import android.content.ContextWrapper
 import android.os.Bundle
+import androidx.activity.SystemBarStyle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.automirrored.rounded.Article
@@ -20,12 +24,18 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -57,6 +67,7 @@ class MainActivity : ComponentActivity() {
             val settings by repository.settings.collectAsStateWithLifecycle(initialValue = FrpSettings())
             ApplyLanguage(settings.languageMode)
             FrpAndroidTheme(themeMode = settings.themeMode) {
+                ApplySystemBars()
                 FrpApp(startDestination = startDestination.value)
             }
         }
@@ -67,6 +78,29 @@ class MainActivity : ComponentActivity() {
         startDestination.value = intent.getStringExtra(FrpForegroundService.EXTRA_START_DESTINATION)
     }
 }
+
+@Composable
+private fun ApplySystemBars() {
+    val view = LocalView.current
+    val background = MaterialTheme.colorScheme.background
+    val backgroundArgb = background.toArgb()
+    val darkMode = background.luminance() < 0.5f
+    SideEffect {
+        if (!view.isInEditMode) {
+            view.context.findActivity()?.enableEdgeToEdge(
+                statusBarStyle = SystemBarStyle.auto(backgroundArgb, backgroundArgb) { darkMode },
+                navigationBarStyle = SystemBarStyle.auto(backgroundArgb, backgroundArgb) { darkMode },
+            )
+        }
+    }
+}
+
+private tailrec fun Context.findActivity(): ComponentActivity? =
+    when (this) {
+        is ComponentActivity -> this
+        is ContextWrapper -> baseContext.findActivity()
+        else -> null
+    }
 
 @Composable
 private fun ApplyLanguage(languageMode: LanguageMode) {
@@ -92,6 +126,7 @@ private fun FrpApp(startDestination: String?) {
         }
     }
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_title)) },
@@ -100,7 +135,10 @@ private fun FrpApp(startDestination: String?) {
                         Icon(Icons.AutoMirrored.Rounded.Article, contentDescription = stringResource(R.string.nav_logs))
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(),
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background,
+                ),
             )
         },
         bottomBar = { BottomNavigation(navController) },
@@ -144,7 +182,10 @@ private fun NavGraphBuilder.frpGraph(navController: NavHostController) {
 private fun BottomNavigation(navController: NavHostController) {
     val backStack by navController.currentBackStackEntryAsState()
     val currentDestination = backStack?.destination
-    NavigationBar {
+    NavigationBar(
+        containerColor = MaterialTheme.colorScheme.background,
+        tonalElevation = 0.dp,
+    ) {
         Screen.topLevel.forEach { screen ->
             NavigationBarItem(
                 selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,

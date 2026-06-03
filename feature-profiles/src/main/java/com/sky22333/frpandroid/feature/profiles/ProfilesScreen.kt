@@ -21,6 +21,7 @@ import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,15 +38,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.size
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.sky22333.frpandroid.core.data.AppGraph
 import com.sky22333.frpandroid.core.frp.FrpProfile
 import com.sky22333.frpandroid.core.frp.FrpType
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -54,6 +58,8 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
     private val appContext = application.applicationContext
     val profiles: StateFlow<List<FrpProfile>> = repository.profiles
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    private val mutableBusyProfileIds = MutableStateFlow<Set<String>>(emptySet())
+    val busyProfileIds: StateFlow<Set<String>> = mutableBusyProfileIds
 
     fun create(type: FrpType, toml: String? = null) {
         val id = UUID.randomUUID().toString()
@@ -77,7 +83,15 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun delete(profile: FrpProfile) {
-        viewModelScope.launch { repository.deleteProfile(profile.id) }
+        if (profile.id in mutableBusyProfileIds.value) return
+        mutableBusyProfileIds.update { it + profile.id }
+        viewModelScope.launch {
+            try {
+                repository.deleteProfile(profile.id)
+            } finally {
+                mutableBusyProfileIds.update { it - profile.id }
+            }
+        }
     }
 
     fun importToml(uri: Uri) {
@@ -113,6 +127,7 @@ fun ProfilesScreen(
     onEditProfile: (String) -> Unit,
 ) {
     val profiles by viewModel.profiles.collectAsStateWithLifecycle()
+    val busyProfileIds by viewModel.busyProfileIds.collectAsStateWithLifecycle()
     var importDialog by remember { mutableStateOf(false) }
     var deleteCandidate by remember { mutableStateOf<FrpProfile?>(null) }
     val documentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -146,8 +161,9 @@ fun ProfilesScreen(
 
         LazyColumn {
             items(profiles, key = { it.id }) { profile ->
+                val busy = profile.id in busyProfileIds
                 ListItem(
-                    modifier = Modifier.clickable { onEditProfile(profile.id) },
+                    modifier = Modifier.clickable(enabled = !busy) { onEditProfile(profile.id) },
                     leadingContent = {
                         Icon(
                             if (profile.type == FrpType.Client) Icons.Rounded.CloudSync else Icons.Rounded.Dns,
@@ -160,10 +176,15 @@ fun ProfilesScreen(
                         Row {
                             Switch(
                                 checked = profile.autoStart,
+                                enabled = !busy,
                                 onCheckedChange = { viewModel.toggleAutoStart(profile, it) },
                             )
-                            IconButton(onClick = { deleteCandidate = profile }) {
-                                Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.profiles_delete))
+                            IconButton(onClick = { deleteCandidate = profile }, enabled = !busy) {
+                                if (busy) {
+                                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                } else {
+                                    Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.profiles_delete))
+                                }
                             }
                         }
                     },
