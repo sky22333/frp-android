@@ -64,6 +64,9 @@
 
 | 日期 | 更新内容 | 影响范围 | 下一步 |
 | --- | --- | --- | --- |
+| 2026-06-03 | 将前台通知状态栏 small icon 从抽象连接符号调整为极简大写 `FRP` 单色 vector，保持通知图标符合 Android small icon 的透明/单色规则 | `core-runtime`、resources、docs | 真机确认不同系统状态栏小尺寸下 `FRP` 可读性 |
+| 2026-06-03 | 按“当前未正式发布、拒绝冗余迁移”准则收敛 Room 变更：保留 logs 表 time/level/type/instanceId 索引，删除数据库 1->2 迁移、迁移导入和版本升级，数据库版本保持 1 | `core-data`、docs | 正式发布后如需改表结构，再按真实用户升级场景补迁移 |
+| 2026-06-03 | 按本轮限定范围收敛 UI/性能：NavHost 明确填满内容区；删除 Dashboard “查看全部”重复入口；日志页移除“仅错误”和“导出”，复制错误/清空改为语义图标操作并降低日志列表上限、增加 LazyColumn contentType；logs 表保留 time/level/type/instanceId 索引且不做未发布阶段迁移；通知 small icon 改为专用单色 vector 并删除旧通知 PNG；设置页新增轻量自启动权限引导，诊断自动刷新只首次执行 | `app`、`core-data`、`core-runtime`、`feature-dashboard`、`feature-logs`、`feature-settings`、resources、docs | 继续由 CI 和真机验证通知状态栏图标、页面切换流畅度、日志页小屏布局和索引生成 |
 | 2026-06-03 | 接入项目根目录 `res/` 中的 PNG logo：复制标准密度 `mipmap-*` 到 `app/src/main/res` 作为 launcher/round icon，并复制同源资源到 `core-runtime/src/main/res` 作为前台服务通知图标；Manifest 和通知构建统一引用项目 logo 资源，移除系统内置通知图标依赖 | `app`、`core-runtime`、resources、docs | 继续由 CI/真机确认 launcher、最近任务和通知栏图标显示效果，尤其通知 small icon 在不同系统上的单色渲染 |
 | 2026-06-03 | 修复 CI Kotlin 编译失败：删除 Logs/Profiles 中误导入的 `androidx.compose.foundation.layout.weight` 内部属性，让 `Modifier.weight()` 在 Row/Column 作用域内正确解析；同时收敛 Dashboard 运行状态行的 `lastError` 表达式，消除无意义 safe-call 警告 | `feature-logs`、`feature-profiles`、`feature-dashboard`、docs | 继续以 CI 结果校准本地无法执行的 Android 编译问题，并保持 UI 改动最小闭环 |
 | 2026-06-03 | 补齐 `app` 直接使用 `collectAsStateWithLifecycle` 所需的 `androidx.lifecycle:lifecycle-runtime-compose` 依赖 | `app` | 继续保持模块依赖与实际 imports 显式一致 |

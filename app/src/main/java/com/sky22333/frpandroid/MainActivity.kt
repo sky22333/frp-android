@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.automirrored.rounded.Article
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Dashboard
@@ -150,7 +151,7 @@ private fun FrpApp(startDestination: String?) {
             } else {
                 Screen.Dashboard.route
             },
-            modifier = Modifier.padding(padding),
+            modifier = Modifier.fillMaxSize().padding(padding),
         ) {
             frpGraph(navController)
         }
@@ -159,9 +160,7 @@ private fun FrpApp(startDestination: String?) {
 
 private fun NavGraphBuilder.frpGraph(navController: NavHostController) {
     composable(Screen.Dashboard.route) {
-        DashboardScreen(
-            onOpenProfiles = { navController.navigate(Screen.Profiles.route) },
-        )
+        DashboardScreen()
     }
     composable(Screen.Profiles.route) {
         ProfilesScreen(onEditProfile = { id -> navController.navigate("editor/$id") })

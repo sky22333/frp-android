@@ -63,6 +63,7 @@ data class SettingsUiState(
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppGraph.repository(application)
     private val mutableUiState = MutableStateFlow(SettingsUiState())
+    private var diagnosticsLoaded = false
     val uiState: StateFlow<SettingsUiState> = mutableUiState
     val settings: StateFlow<FrpSettings> = repository.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FrpSettings())
@@ -74,8 +75,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setRetention(days: Int) = viewModelScope.launch { repository.setLogRetentionDays(days) }
     fun setTheme(mode: ThemeMode) = viewModelScope.launch { repository.setThemeMode(mode) }
     fun setLanguage(mode: LanguageMode) = viewModelScope.launch { repository.setLanguageMode(mode) }
-    fun refreshDiagnostics() = viewModelScope.launch {
+    fun refreshDiagnostics(force: Boolean = false) = viewModelScope.launch {
+        if (diagnosticsLoaded && !force) return@launch
         repository.initialize()
+        diagnosticsLoaded = true
         mutableUiState.update { it.copy(diagnostics = repository.diagnostics()) }
     }
     fun recoverPendingStart(context: Context) = viewModelScope.launch {
@@ -155,6 +158,14 @@ fun SettingsScreen(
         }
         item {
             FrpListRow(
+                icon = Icons.Rounded.PowerSettingsNew,
+                title = stringResource(R.string.settings_autostart_guide),
+                subtitle = stringResource(R.string.settings_autostart_guide_hint),
+                modifier = Modifier.padding(horizontal = 16.dp).clickable { openAppDetails(context) },
+            )
+        }
+        item {
+            FrpListRow(
                 icon = Icons.Rounded.Notifications,
                 title = stringResource(R.string.settings_notifications),
                 subtitle = stringResource(R.string.settings_notifications_hint),
@@ -220,7 +231,7 @@ fun SettingsScreen(
                         diagnostics.lastError ?: "-",
                     ),
                     statusRunning = diagnostics.nativeAvailable,
-                    modifier = Modifier.padding(horizontal = 16.dp).clickable { viewModel.refreshDiagnostics() },
+                    modifier = Modifier.padding(horizontal = 16.dp).clickable { viewModel.refreshDiagnostics(force = true) },
                 )
             }
         }
@@ -331,6 +342,13 @@ private fun openBatterySettings(context: Context) {
     }.onFailure {
         context.startActivity(Intent(AndroidSettings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
     }
+}
+
+private fun openAppDetails(context: Context) {
+    context.startActivity(
+        Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS)
+            .setData(Uri.parse("package:${context.packageName}")),
+    )
 }
 
 private fun isIgnoringBatteryOptimizations(context: Context): Boolean {

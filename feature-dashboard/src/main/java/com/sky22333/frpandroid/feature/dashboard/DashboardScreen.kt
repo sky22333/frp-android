@@ -188,7 +188,6 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
-    onOpenProfiles: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -273,14 +272,7 @@ fun DashboardScreen(
             }
         }
         item {
-            SectionTitle(
-                title = stringResource(R.string.dashboard_profiles),
-                action = {
-                    FilledTonalButton(onClick = onOpenProfiles) {
-                        Text(stringResource(R.string.dashboard_view_all))
-                    }
-                },
-            )
+            SectionTitle(title = stringResource(R.string.dashboard_profiles))
         }
         if (state.profiles.isEmpty()) {
             item {

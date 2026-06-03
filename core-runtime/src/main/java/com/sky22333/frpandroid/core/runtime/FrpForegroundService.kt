@@ -130,7 +130,7 @@ class FrpForegroundService : Service() {
         }
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_notification_logo)
+            .setSmallIcon(R.drawable.ic_stat_frp)
             .setContentTitle(getString(R.string.notification_running_title))
             .setContentText(getString(R.string.notification_running_content, runningCount))
             .setOngoing(true)

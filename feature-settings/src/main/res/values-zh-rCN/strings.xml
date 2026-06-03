@@ -22,6 +22,8 @@
     <string name="settings_pending_start">存在待恢复的开机自启任务</string>
     <string name="settings_pending_start_hint">点击恢复可运行的隧道</string>
     <string name="settings_notifications_hint">打开此应用的通知设置</string>
+    <string name="settings_autostart_guide">自启动权限引导</string>
+    <string name="settings_autostart_guide_hint">如果开机自启不生效，请在手机管家或系统自启动设置中允许本应用。</string>
     <string name="settings_enabled">已启用</string>
     <string name="settings_disabled">未启用</string>
     <string name="settings_system">跟随系统</string>

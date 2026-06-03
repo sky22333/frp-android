@@ -12,6 +12,5 @@
     <string name="dashboard_enabled">已启用</string>
     <string name="dashboard_disabled">未启用</string>
     <string name="dashboard_profiles">隧道实例</string>
-    <string name="dashboard_view_all">查看全部</string>
     <string name="dashboard_no_profiles">还没有隧道配置</string>
 </resources>

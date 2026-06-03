@@ -5,14 +5,9 @@
     <string name="logs_level">级别</string>
     <string name="logs_pause_scroll">暂停滚动</string>
     <string name="logs_copy_errors">复制错误</string>
-    <string name="logs_export">导出日志</string>
     <string name="logs_empty">暂无日志</string>
     <string name="logs_all">全部</string>
-    <string name="logs_errors_only">仅错误</string>
     <string name="logs_clear">清空</string>
-    <string name="logs_clear_confirm_title">清空日志？</string>
-    <string name="logs_clear_confirm_message">这会删除所有已保存日志和待写入日志。</string>
     <string name="logs_copied_errors">已复制 %1$d 条错误日志</string>
     <string name="logs_no_errors">没有可复制的错误日志</string>
-    <string name="logs_export_started">已开始导出</string>
 </resources>

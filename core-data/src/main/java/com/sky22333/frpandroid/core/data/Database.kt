@@ -5,6 +5,7 @@ import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
 import androidx.room.Insert
+import androidx.room.Index
 import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
@@ -41,7 +42,15 @@ data class FrpRuntimeStateEntity(
     fun toModel(): FrpRuntimeState = FrpRuntimeState(id, type, state, lastError)
 }
 
-@Entity(tableName = "logs")
+@Entity(
+    tableName = "logs",
+    indices = [
+        Index(value = ["time"]),
+        Index(value = ["level"]),
+        Index(value = ["type"]),
+        Index(value = ["instanceId"]),
+    ],
+)
 data class FrpLogEntity(
     @PrimaryKey(autoGenerate = true) val uid: Long = 0,
     val instanceId: String,

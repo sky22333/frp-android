@@ -22,6 +22,8 @@
     <string name="settings_pending_start">Boot recovery is pending</string>
     <string name="settings_pending_start_hint">Tap to recover eligible tunnels</string>
     <string name="settings_notifications_hint">Open this app\'s notification settings</string>
+    <string name="settings_autostart_guide">Autostart permission guide</string>
+    <string name="settings_autostart_guide_hint">If boot start fails, allow this app to autostart in your phone manager.</string>
     <string name="settings_enabled">Enabled</string>
     <string name="settings_disabled">Disabled</string>
     <string name="settings_system">Follow system</string>
