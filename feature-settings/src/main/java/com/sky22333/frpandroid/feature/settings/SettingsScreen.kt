@@ -63,7 +63,6 @@ data class SettingsUiState(
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppGraph.repository(application)
     private val mutableUiState = MutableStateFlow(SettingsUiState())
-    private var diagnosticsLoaded = false
     val uiState: StateFlow<SettingsUiState> = mutableUiState
     val settings: StateFlow<FrpSettings> = repository.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FrpSettings())
@@ -75,10 +74,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setRetention(days: Int) = viewModelScope.launch { repository.setLogRetentionDays(days) }
     fun setTheme(mode: ThemeMode) = viewModelScope.launch { repository.setThemeMode(mode) }
     fun setLanguage(mode: LanguageMode) = viewModelScope.launch { repository.setLanguageMode(mode) }
-    fun refreshDiagnostics(force: Boolean = false) = viewModelScope.launch {
-        if (diagnosticsLoaded && !force) return@launch
-        repository.initialize()
-        diagnosticsLoaded = true
+    fun refreshDiagnostics() = viewModelScope.launch {
         mutableUiState.update { it.copy(diagnostics = repository.diagnostics()) }
     }
     fun recoverPendingStart(context: Context) = viewModelScope.launch {
@@ -231,7 +227,7 @@ fun SettingsScreen(
                         diagnostics.lastError ?: "-",
                     ),
                     statusRunning = diagnostics.nativeAvailable,
-                    modifier = Modifier.padding(horizontal = 16.dp).clickable { viewModel.refreshDiagnostics(force = true) },
+                    modifier = Modifier.padding(horizontal = 16.dp).clickable { viewModel.refreshDiagnostics() },
                 )
             }
         }
@@ -240,8 +236,8 @@ fun SettingsScreen(
             FrpListRow(
                 icon = Icons.Rounded.Settings,
                 title = stringResource(R.string.settings_version),
-                subtitle = "0.1.0",
-                modifier = Modifier.padding(horizontal = 16.dp),
+                subtitle = BuildConfig.APP_VERSION_NAME,
+                modifier = Modifier.padding(horizontal = 16.dp).clickable { openProjectPage(context) },
             )
         }
     }
@@ -348,6 +344,12 @@ private fun openAppDetails(context: Context) {
     context.startActivity(
         Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS)
             .setData(Uri.parse("package:${context.packageName}")),
+    )
+}
+
+private fun openProjectPage(context: Context) {
+    context.startActivity(
+        Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/sky22333/frp-android")),
     )
 }
 

@@ -64,6 +64,7 @@
 
 | 日期 | 更新内容 | 影响范围 | 下一步 |
 | --- | --- | --- | --- |
+| 2026-06-03 | 最小根因修复无实例诊断初始化：设置页诊断刷新改为只读取现有 Repository 诊断状态，不再调用 `repository.initialize()`；关于页版本改为读取 `APP_VERSION_NAME` 注入值并可点击打开 GitHub 项目页；CI 通过手动 tag 注入真实版本名，使用 `SIGNING_KEY_BASE64`、`KEY_STORE_PASSWORD`、`KEY_ALIAS`、`KEY_PASSWORD` 构建 PKCS#12 签名 Release，移除 debug 构建、debug 上传和旧签名变量 | `feature-settings`、`app`、CI、docs | CI 验证签名 Release APK 版本名、签名变量和 Release 附件 |
 | 2026-06-03 | 将前台通知状态栏 small icon 从抽象连接符号调整为极简大写 `FRP` 单色 vector，保持通知图标符合 Android small icon 的透明/单色规则 | `core-runtime`、resources、docs | 真机确认不同系统状态栏小尺寸下 `FRP` 可读性 |
 | 2026-06-03 | 按“当前未正式发布、拒绝冗余迁移”准则收敛 Room 变更：保留 logs 表 time/level/type/instanceId 索引，删除数据库 1->2 迁移、迁移导入和版本升级，数据库版本保持 1 | `core-data`、docs | 正式发布后如需改表结构，再按真实用户升级场景补迁移 |
 | 2026-06-03 | 按本轮限定范围收敛 UI/性能：NavHost 明确填满内容区；删除 Dashboard “查看全部”重复入口；日志页移除“仅错误”和“导出”，复制错误/清空改为语义图标操作并降低日志列表上限、增加 LazyColumn contentType；logs 表保留 time/level/type/instanceId 索引且不做未发布阶段迁移；通知 small icon 改为专用单色 vector 并删除旧通知 PNG；设置页新增轻量自启动权限引导，诊断自动刷新只首次执行 | `app`、`core-data`、`core-runtime`、`feature-dashboard`、`feature-logs`、`feature-settings`、resources、docs | 继续由 CI 和真机验证通知状态栏图标、页面切换流畅度、日志页小屏布局和索引生成 |

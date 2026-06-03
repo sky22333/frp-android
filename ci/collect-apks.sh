@@ -5,7 +5,7 @@ root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 output_dir="${root_dir}/artifacts"
 
 rm -rf "${output_dir}"
-mkdir -p "${output_dir}/debug" "${output_dir}/release"
+mkdir -p "${output_dir}/release"
 
 copy_one() {
   local flavor="$1"
@@ -22,11 +22,6 @@ copy_one() {
 
   cp "${source}" "${output_dir}/${build_type}/frp-android-${file_suffix}-${build_type}.apk"
 }
-
-copy_one "universal" "debug" "universal"
-copy_one "arm64V8a" "debug" "arm64-v8a"
-copy_one "armeabiV7a" "debug" "armeabi-v7a"
-copy_one "x86_64" "debug" "x86_64"
 
 copy_one "universal" "release" "universal"
 copy_one "arm64V8a" "release" "arm64-v8a"

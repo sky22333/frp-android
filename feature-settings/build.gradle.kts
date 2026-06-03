@@ -6,8 +6,14 @@ plugins {
 android {
     namespace = "com.sky22333.frpandroid.feature.settings"
     compileSdk = libs.versions.compileSdk.get().toInt()
-    defaultConfig { minSdk = libs.versions.minSdk.get().toInt() }
-    buildFeatures { compose = true }
+    defaultConfig {
+        minSdk = libs.versions.minSdk.get().toInt()
+        buildConfigField("String", "APP_VERSION_NAME", "\"${providers.environmentVariable("APP_VERSION_NAME").orElse("v0.0.1").get()}\"")
+    }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 }
 
 dependencies {

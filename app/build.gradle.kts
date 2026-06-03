@@ -3,6 +3,8 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+val appVersionName = providers.environmentVariable("APP_VERSION_NAME").orElse("v0.0.1").get()
+
 android {
     namespace = "com.sky22333.frpandroid"
     compileSdk = libs.versions.compileSdk.get().toInt()
@@ -12,7 +14,7 @@ android {
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = appVersionName
     }
 
     flavorDimensions += "abi"
@@ -47,12 +49,13 @@ android {
 
     signingConfigs {
         create("release") {
-            val keystorePath = providers.environmentVariable("ANDROID_KEYSTORE_FILE").orNull
+            val keystorePath = providers.environmentVariable("SIGNING_KEY_FILE").orNull
             if (!keystorePath.isNullOrBlank()) {
                 storeFile = file(keystorePath)
-                storePassword = providers.environmentVariable("ANDROID_KEYSTORE_PASSWORD").orNull
-                keyAlias = providers.environmentVariable("ANDROID_KEY_ALIAS").orNull
-                keyPassword = providers.environmentVariable("ANDROID_KEY_PASSWORD").orNull
+                storeType = "pkcs12"
+                storePassword = providers.environmentVariable("KEY_STORE_PASSWORD").orNull
+                keyAlias = providers.environmentVariable("KEY_ALIAS").orNull
+                keyPassword = providers.environmentVariable("KEY_PASSWORD").orNull
             }
         }
     }
@@ -61,7 +64,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            val keystorePath = providers.environmentVariable("ANDROID_KEYSTORE_FILE").orNull
+            val keystorePath = providers.environmentVariable("SIGNING_KEY_FILE").orNull
             if (!keystorePath.isNullOrBlank()) {
                 signingConfig = signingConfigs.getByName("release")
             }

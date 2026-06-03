@@ -1,4 +1,4 @@
-name: 安卓构建与发布
+name: 安卓正式版构建与发布
 
 on:
   workflow_dispatch:
@@ -14,8 +14,10 @@ permissions:
 
 jobs:
   build-release:
-    name: 下载依赖、测试、构建并发布
+    name: 下载依赖、测试、签名构建并发布
     runs-on: ubuntu-latest
+    env:
+      APP_VERSION_NAME: ${{ inputs.tag }}
 
     steps:
       - name: 拉取源码
@@ -43,55 +45,49 @@ jobs:
       - name: 验收 frplib AAR
         run: bash ci/validate-frplib.sh
 
-      - name: 准备 Release 签名文件
+      - name: 准备 PKCS#12 Release 签名文件
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          SIGNING_KEY_BASE64: ${{ secrets.SIGNING_KEY_BASE64 }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          if [ -z "${ANDROID_KEYSTORE_BASE64}" ]; then
-            echo "未配置 Release 签名，继续构建 unsigned release APK"
-            exit 0
-          fi
-          echo "${ANDROID_KEYSTORE_BASE64}" | base64 --decode > "${RUNNER_TEMP}/release.keystore"
-          echo "ANDROID_KEYSTORE_FILE=${RUNNER_TEMP}/release.keystore" >> "${GITHUB_ENV}"
-
-      - name: 先构建 Debug 多架构 APK
-        run: >
-          gradle
-          :app:assembleUniversalDebug
-          :app:assembleArm64V8aDebug
-          :app:assembleArmeabiV7aDebug
-          :app:assembleX86_64Debug
+          test -n "${SIGNING_KEY_BASE64}" || { echo "缺少 SIGNING_KEY_BASE64"; exit 1; }
+          test -n "${KEY_STORE_PASSWORD}" || { echo "缺少 KEY_STORE_PASSWORD"; exit 1; }
+          test -n "${KEY_ALIAS}" || { echo "缺少 KEY_ALIAS"; exit 1; }
+          test -n "${KEY_PASSWORD}" || { echo "缺少 KEY_PASSWORD"; exit 1; }
+          echo "${SIGNING_KEY_BASE64}" | base64 --decode > "${RUNNER_TEMP}/release.p12"
+          echo "SIGNING_KEY_FILE=${RUNNER_TEMP}/release.p12" >> "${GITHUB_ENV}"
+          echo "KEY_STORE_PASSWORD=${KEY_STORE_PASSWORD}" >> "${GITHUB_ENV}"
+          echo "KEY_ALIAS=${KEY_ALIAS}" >> "${GITHUB_ENV}"
+          echo "KEY_PASSWORD=${KEY_PASSWORD}" >> "${GITHUB_ENV}"
 
       - name: 运行单元测试
         run: >
           gradle
-          :core-frp:testDebugUnitTest
-          :core-data:testDebugUnitTest
-          :core-runtime:testDebugUnitTest
-          :core-ui:testDebugUnitTest
-          :feature-dashboard:testDebugUnitTest
-          :feature-profiles:testDebugUnitTest
-          :feature-editor:testDebugUnitTest
-          :feature-logs:testDebugUnitTest
-          :feature-settings:testDebugUnitTest
-          :app:testUniversalDebugUnitTest
-          :app:testArm64V8aDebugUnitTest
-          :app:testArmeabiV7aDebugUnitTest
-          :app:testX86_64DebugUnitTest
+          :core-frp:testReleaseUnitTest
+          :core-data:testReleaseUnitTest
+          :core-runtime:testReleaseUnitTest
+          :core-ui:testReleaseUnitTest
+          :feature-dashboard:testReleaseUnitTest
+          :feature-profiles:testReleaseUnitTest
+          :feature-editor:testReleaseUnitTest
+          :feature-logs:testReleaseUnitTest
+          :feature-settings:testReleaseUnitTest
+          :app:testUniversalReleaseUnitTest
+          :app:testArm64V8aReleaseUnitTest
+          :app:testArmeabiV7aReleaseUnitTest
+          :app:testX86_64ReleaseUnitTest
 
-      - name: 运行 Android Lint
+      - name: 运行 Release Lint
         run: >
           gradle
-          :app:lintUniversalDebug
-          :app:lintArm64V8aDebug
-          :app:lintArmeabiV7aDebug
-          :app:lintX86_64Debug
+          :app:lintUniversalRelease
+          :app:lintArm64V8aRelease
+          :app:lintArmeabiV7aRelease
+          :app:lintX86_64Release
 
-      - name: 构建 Release 多架构 APK
-        env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      - name: 构建签名 Release 多架构 APK
         run: >
           gradle
           :app:assembleUniversalRelease
@@ -99,15 +95,8 @@ jobs:
           :app:assembleArmeabiV7aRelease
           :app:assembleX86_64Release
 
-      - name: 整理 APK 文件名
+      - name: 整理 Release APK 文件名
         run: bash ci/collect-apks.sh
-
-      - name: 上传 Debug 构建产物
-        uses: actions/upload-artifact@v7
-        with:
-          name: frp-android-debug
-          path: artifacts/debug/*.apk
-          if-no-files-found: error
 
       - name: 上传 Release 构建产物
         uses: actions/upload-artifact@v7
@@ -122,6 +111,4 @@ jobs:
           tag_name: ${{ inputs.tag }}
           name: ${{ inputs.tag }}
           generate_release_notes: true
-          files: |
-            artifacts/debug/*.apk
-            artifacts/release/*.apk
+          files: artifacts/release/*.apk
