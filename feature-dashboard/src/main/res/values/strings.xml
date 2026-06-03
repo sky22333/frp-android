@@ -1,0 +1,16 @@
+﻿<resources>
+    <string name="dashboard_title">Dashboard</string>
+    <string name="dashboard_running">Running</string>
+    <string name="dashboard_stopped">Stopped</string>
+    <string name="dashboard_instances_summary">%1$d running · %2$d failed</string>
+    <string name="dashboard_stop_all">Stop all</string>
+    <string name="dashboard_start">Start</string>
+    <string name="dashboard_stop">Stop</string>
+    <string name="dashboard_restart">Restart</string>
+    <string name="dashboard_foreground_service">Foreground service</string>
+    <string name="dashboard_boot_start">Boot start</string>
+    <string name="dashboard_enabled">Enabled</string>
+    <string name="dashboard_disabled">Disabled</string>
+    <string name="dashboard_profiles">Tunnel instances</string>
+    <string name="dashboard_no_profiles">No tunnel profiles yet</string>
+</resources>

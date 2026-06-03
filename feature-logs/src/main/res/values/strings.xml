@@ -1,0 +1,13 @@
+﻿<resources>
+    <string name="logs_title">Logs</string>
+    <string name="logs_keyword">Keyword</string>
+    <string name="logs_instance">Instance</string>
+    <string name="logs_level">Level</string>
+    <string name="logs_pause_scroll">Pause scroll</string>
+    <string name="logs_copy_logs">Copy logs</string>
+    <string name="logs_empty">No logs</string>
+    <string name="logs_all">All</string>
+    <string name="logs_clear">Clear</string>
+    <string name="logs_copied_logs">%1$d logs copied</string>
+    <string name="logs_no_logs_to_copy">No logs to copy</string>
+</resources>

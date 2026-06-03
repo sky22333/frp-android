@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">frp-android</string>
+    <string name="nav_dashboard">控制台</string>
+    <string name="nav_profiles">配置</string>
+    <string name="nav_logs">日志</string>
+    <string name="nav_settings">设置</string>
+    <string name="app_title">frp 控制台</string>
+    <string name="notification_permission">启动前台隧道前需要授予通知权限。</string>
+</resources>

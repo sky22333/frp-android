@@ -1,0 +1,100 @@
+name: 安卓正式版构建与发布
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 发布 tag
+        required: true
+        default: v0.0.1
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: 下载依赖、测试、签名构建并发布
+    runs-on: ubuntu-latest
+    env:
+      APP_VERSION_NAME: ${{ inputs.tag }}
+
+    steps:
+      - name: 拉取源码
+        uses: actions/checkout@v6
+
+      - name: 配置 JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: 配置 Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 9.2.1
+
+      - name: 安装下载工具
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: 下载 frplib latest 多架构 AAR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash ci/download-frplib.sh
+
+      - name: 验收 frplib AAR
+        run: bash ci/validate-frplib.sh
+
+      - name: 准备 PKCS#12 Release 签名文件
+        env:
+          SIGNING_KEY_BASE64: ${{ secrets.SIGNING_KEY_BASE64 }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          test -n "${SIGNING_KEY_BASE64}" || { echo "缺少 SIGNING_KEY_BASE64"; exit 1; }
+          test -n "${KEY_STORE_PASSWORD}" || { echo "缺少 KEY_STORE_PASSWORD"; exit 1; }
+          test -n "${KEY_ALIAS}" || { echo "缺少 KEY_ALIAS"; exit 1; }
+          test -n "${KEY_PASSWORD}" || { echo "缺少 KEY_PASSWORD"; exit 1; }
+          echo "${SIGNING_KEY_BASE64}" | base64 --decode > "${RUNNER_TEMP}/release.p12"
+          echo "SIGNING_KEY_FILE=${RUNNER_TEMP}/release.p12" >> "${GITHUB_ENV}"
+          echo "KEY_STORE_PASSWORD=${KEY_STORE_PASSWORD}" >> "${GITHUB_ENV}"
+          echo "KEY_ALIAS=${KEY_ALIAS}" >> "${GITHUB_ENV}"
+          echo "KEY_PASSWORD=${KEY_PASSWORD}" >> "${GITHUB_ENV}"
+
+      - name: 运行单元测试
+        run: gradle test
+
+      - name: 运行 Release Lint
+        run: >
+          gradle
+          :app:lintUniversalRelease
+          :app:lintArm64V8aRelease
+          :app:lintArmeabiV7aRelease
+          :app:lintX86_64Release
+
+      - name: 构建签名 Release 多架构 APK
+        run: >
+          gradle
+          :app:assembleUniversalRelease
+          :app:assembleArm64V8aRelease
+          :app:assembleArmeabiV7aRelease
+          :app:assembleX86_64Release
+
+      - name: 整理 Release APK 文件名
+        run: bash ci/collect-apks.sh
+
+      - name: 上传 Release 构建产物
+        uses: actions/upload-artifact@v7
+        with:
+          name: frp-android-release
+          path: artifacts/release/*.apk
+          if-no-files-found: error
+
+      - name: 发布 GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ inputs.tag }}
+          name: ${{ inputs.tag }}
+          generate_release_notes: true
+          files: artifacts/release/*.apk

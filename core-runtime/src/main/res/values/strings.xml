@@ -1,0 +1,8 @@
+<resources>
+    <string name="notification_channel_name">frp runtime</string>
+    <string name="notification_running_title">frp is running</string>
+    <string name="notification_running_content">%1$d instance(s) running</string>
+    <string name="notification_open_app">Open app</string>
+    <string name="notification_stop_all">Stop all</string>
+    <string name="notification_view_logs">View logs</string>
+</resources>

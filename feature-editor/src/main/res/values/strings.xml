@@ -1,0 +1,9 @@
+<resources>
+    <string name="editor_title">TOML editor</string>
+    <string name="editor_name">Name</string>
+    <string name="editor_validate">Validate</string>
+    <string name="editor_save">Save</string>
+    <string name="editor_save_restart">Save and restart</string>
+    <string name="editor_valid">TOML is valid</string>
+    <string name="editor_profile_missing">Profile not found</string>
+</resources>

@@ -1,0 +1,8 @@
+<resources>
+    <string name="notification_channel_name">frp 运行服务</string>
+    <string name="notification_running_title">frp 正在运行</string>
+    <string name="notification_running_content">%1$d 个实例正在运行</string>
+    <string name="notification_open_app">打开应用</string>
+    <string name="notification_stop_all">停止全部</string>
+    <string name="notification_view_logs">查看日志</string>
+</resources>

@@ -1,0 +1,35 @@
+<resources>
+    <string name="settings_title">设置</string>
+    <string name="settings_boot_start">开机自启</string>
+    <string name="settings_notifications">通知设置</string>
+    <string name="settings_battery">电池优化引导</string>
+    <string name="settings_theme">主题</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_log_retention">日志保留天数</string>
+    <string name="settings_background_section">后台运行</string>
+    <string name="settings_appearance_section">外观</string>
+    <string name="settings_logs_section">日志</string>
+    <string name="settings_diagnostics_section">诊断</string>
+    <string name="settings_about_section">关于</string>
+    <string name="settings_battery_allowed">此应用已允许忽略电池优化</string>
+    <string name="settings_battery_restricted">电池优化可能限制后台隧道运行</string>
+    <string name="settings_network_reconnect">网络恢复后重连</string>
+    <string name="settings_auto_retry">失败后自动重试</string>
+    <string name="settings_diagnostics">后台诊断采样</string>
+    <string name="settings_diagnostics_summary">诊断摘要</string>
+    <string name="settings_diagnostics_details">frplib 可用：%1$b\n运行时已初始化：%2$b\n临时目录：%3$s\n运行中：%4$d，失败：%5$d\n待恢复启动：%6$b\n最近错误：%7$s</string>
+    <string name="settings_version">版本</string>
+    <string name="settings_pending_start">存在待恢复的开机自启任务</string>
+    <string name="settings_pending_start_hint">点击恢复可运行的隧道</string>
+    <string name="settings_notifications_hint">打开此应用的通知设置</string>
+    <string name="settings_autostart_guide">自启动权限引导</string>
+    <string name="settings_autostart_guide_hint">如果开机自启不生效，请在手机管家或系统自启动设置中允许本应用。</string>
+    <string name="settings_enabled">已启用</string>
+    <string name="settings_disabled">未启用</string>
+    <string name="settings_system">跟随系统</string>
+    <string name="settings_light">浅色</string>
+    <string name="settings_dark">深色</string>
+    <string name="settings_amoled">AMOLED</string>
+    <string name="settings_chinese">中文</string>
+    <string name="settings_english">English</string>
+</resources>

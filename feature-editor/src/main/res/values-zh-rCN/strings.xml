@@ -1,0 +1,9 @@
+<resources>
+    <string name="editor_title">TOML 编辑</string>
+    <string name="editor_name">名称</string>
+    <string name="editor_validate">校验</string>
+    <string name="editor_save">保存</string>
+    <string name="editor_save_restart">保存并重启</string>
+    <string name="editor_valid">TOML 校验通过</string>
+    <string name="editor_profile_missing">配置不存在</string>
+</resources>

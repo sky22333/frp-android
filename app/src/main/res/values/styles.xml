@@ -1,0 +1,5 @@
+<resources>
+    <style name="Theme.FrpAndroid" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+    </style>
+</resources>
