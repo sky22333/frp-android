@@ -63,21 +63,7 @@ jobs:
           echo "KEY_PASSWORD=${KEY_PASSWORD}" >> "${GITHUB_ENV}"
 
       - name: 运行单元测试
-        run: >
-          gradle
-          :core-frp:testReleaseUnitTest
-          :core-data:testReleaseUnitTest
-          :core-runtime:testReleaseUnitTest
-          :core-ui:testReleaseUnitTest
-          :feature-dashboard:testReleaseUnitTest
-          :feature-profiles:testReleaseUnitTest
-          :feature-editor:testReleaseUnitTest
-          :feature-logs:testReleaseUnitTest
-          :feature-settings:testReleaseUnitTest
-          :app:testUniversalReleaseUnitTest
-          :app:testArm64V8aReleaseUnitTest
-          :app:testArmeabiV7aReleaseUnitTest
-          :app:testX86_64ReleaseUnitTest
+        run: gradle test
 
       - name: 运行 Release Lint
         run: >
