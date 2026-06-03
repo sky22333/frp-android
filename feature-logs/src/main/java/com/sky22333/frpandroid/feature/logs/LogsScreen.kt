@@ -16,12 +16,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -44,6 +46,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.sky22333.frpandroid.core.data.AppGraph
 import com.sky22333.frpandroid.core.frp.FrpLog
+import com.sky22333.frpandroid.core.ui.FrpListRow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -211,16 +214,21 @@ fun LogsScreen(
             if (state.logs.isEmpty()) {
                 Text(stringResource(R.string.logs_empty), modifier = Modifier.padding(16.dp))
             }
-            LazyColumn(Modifier.fillMaxWidth()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 itemsIndexed(
                     state.logs,
                     key = { index, log -> if (log.uid > 0) log.uid else "${log.time}-${log.instanceId}-$index" },
                 ) { _, log ->
-                    ListItem(
-                        headlineContent = { Text("[${log.level}] ${log.message}") },
-                        supportingContent = {
-                            Text("${log.type}/${log.instanceId.ifBlank { "-" }} · ${timeFormatter.format(Date(log.time))}")
-                        },
+                    FrpListRow(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        icon = Icons.Rounded.BugReport,
+                        title = log.message,
+                        subtitle = "${log.type}/${log.instanceId.ifBlank { "-" }} · ${timeFormatter.format(Date(log.time))}",
+                        status = log.level,
+                        statusRunning = log.level != "error",
                     )
                 }
             }

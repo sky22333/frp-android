@@ -1,8 +1,10 @@
 <resources>
     <string name="profiles_title">配置</string>
+    <string name="profiles_new">新建</string>
     <string name="profiles_new_frpc">新建 frpc</string>
     <string name="profiles_new_frps">新建 frps</string>
     <string name="profiles_import">导入 TOML</string>
+    <string name="profiles_import_file">从文件导入</string>
     <string name="profiles_paste_import">粘贴 TOML</string>
     <string name="profiles_delete">删除</string>
     <string name="profiles_auto_start">自启</string>

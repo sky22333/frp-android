@@ -1,8 +1,10 @@
 <resources>
     <string name="profiles_title">Profiles</string>
+    <string name="profiles_new">New</string>
     <string name="profiles_new_frpc">New frpc</string>
     <string name="profiles_new_frps">New frps</string>
     <string name="profiles_import">Import TOML</string>
+    <string name="profiles_import_file">Import from file</string>
     <string name="profiles_paste_import">Paste TOML</string>
     <string name="profiles_delete">Delete</string>
     <string name="profiles_auto_start">Auto start</string>

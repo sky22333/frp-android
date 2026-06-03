@@ -1,5 +1,6 @@
 package com.sky22333.frpandroid.core.ui
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -72,7 +73,7 @@ fun InfoCard(
     trailing: @Composable (() -> Unit)? = null,
 ) {
     Card(
-        modifier = modifier,
+        modifier = modifier.animateContentSize(),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
@@ -95,6 +96,52 @@ fun InfoCard(
                 Text(text = subtitle, style = MaterialTheme.typography.bodyMedium)
             }
             if (trailing != null) trailing()
+        }
+    }
+}
+
+@Composable
+fun FrpListRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier,
+    status: String? = null,
+    statusRunning: Boolean = false,
+    trailing: @Composable (() -> Unit)? = null,
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (statusRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(28.dp),
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = title, style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(3.dp))
+                Text(text = subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (!status.isNullOrBlank()) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = status,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (statusRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+            trailing?.invoke()
         }
     }
 }

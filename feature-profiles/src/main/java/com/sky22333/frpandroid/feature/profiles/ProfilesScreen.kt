@@ -12,20 +12,19 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Dns
-import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,6 +45,7 @@ import com.sky22333.frpandroid.core.data.AppGraph
 import com.sky22333.frpandroid.core.frp.FrpProfile
 import com.sky22333.frpandroid.core.frp.FrpType
 import com.sky22333.frpandroid.core.ui.ErrorText
+import com.sky22333.frpandroid.core.ui.FrpListRow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -136,6 +136,8 @@ fun ProfilesScreen(
     val profiles by viewModel.profiles.collectAsStateWithLifecycle()
     val busyProfileIds by viewModel.busyProfileIds.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
+    var newDialog by remember { mutableStateOf(false) }
+    var importChoiceDialog by remember { mutableStateOf(false) }
     var importDialog by remember { mutableStateOf(false) }
     var deleteCandidate by remember { mutableStateOf<FrpProfile?>(null) }
     val documentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -149,17 +151,11 @@ fun ProfilesScreen(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Button(onClick = { viewModel.create(FrpType.Client) }, modifier = Modifier.weight(1f)) {
-                Text(stringResource(R.string.profiles_new_frpc))
+            Button(onClick = { newDialog = true }, modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.profiles_new))
             }
-            FilledTonalButton(onClick = { viewModel.create(FrpType.Server) }, modifier = Modifier.weight(1f)) {
-                Text(stringResource(R.string.profiles_new_frps))
-            }
-            IconButton(onClick = { documentLauncher.launch(arrayOf("text/*", "application/octet-stream")) }) {
-                Icon(Icons.Rounded.UploadFile, contentDescription = stringResource(R.string.profiles_import))
-            }
-            FilledTonalButton(onClick = { importDialog = true }) {
-                Text(stringResource(R.string.profiles_paste_import))
+            FilledTonalButton(onClick = { importChoiceDialog = true }, modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.profiles_import))
             }
         }
 
@@ -173,32 +169,29 @@ fun ProfilesScreen(
             )
         }
 
-        LazyColumn {
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             items(profiles, key = { it.id }) { profile ->
                 val busy = profile.id in busyProfileIds
-                ListItem(
-                    modifier = Modifier.clickable(enabled = !busy) { onEditProfile(profile.id) },
-                    leadingContent = {
-                        Icon(
-                            if (profile.type == FrpType.Client) Icons.Rounded.CloudSync else Icons.Rounded.Dns,
-                            contentDescription = null,
+                FrpListRow(
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .clickable(enabled = !busy) { onEditProfile(profile.id) },
+                    icon = if (profile.type == FrpType.Client) Icons.Rounded.CloudSync else Icons.Rounded.Dns,
+                    title = profile.name,
+                    subtitle = "${profile.type.name} · ${
+                        stringResource(
+                            if (profile.autoStart) {
+                                R.string.profiles_auto_start
+                            } else {
+                                R.string.profiles_manual_start
+                            },
                         )
-                    },
-                    headlineContent = { Text(profile.name) },
-                    supportingContent = {
-                        Text(
-                            "${profile.type.name} · ${
-                                stringResource(
-                                    if (profile.autoStart) {
-                                        R.string.profiles_auto_start
-                                    } else {
-                                        R.string.profiles_manual_start
-                                    },
-                                )
-                            }",
-                        )
-                    },
-                    trailingContent = {
+                    }",
+                    statusRunning = profile.autoStart,
+                    trailing = {
                         Row {
                             Switch(
                                 checked = profile.autoStart,
@@ -217,6 +210,40 @@ fun ProfilesScreen(
                 )
             }
         }
+    }
+
+    if (newDialog) {
+        ProfileActionDialog(
+            title = stringResource(R.string.profiles_new),
+            onDismiss = { newDialog = false },
+            entries = listOf(
+                stringResource(R.string.profiles_new_frpc) to {
+                    viewModel.create(FrpType.Client)
+                    newDialog = false
+                },
+                stringResource(R.string.profiles_new_frps) to {
+                    viewModel.create(FrpType.Server)
+                    newDialog = false
+                },
+            ),
+        )
+    }
+
+    if (importChoiceDialog) {
+        ProfileActionDialog(
+            title = stringResource(R.string.profiles_import),
+            onDismiss = { importChoiceDialog = false },
+            entries = listOf(
+                stringResource(R.string.profiles_import_file) to {
+                    importChoiceDialog = false
+                    documentLauncher.launch(arrayOf("text/*", "application/octet-stream"))
+                },
+                stringResource(R.string.profiles_paste_import) to {
+                    importChoiceDialog = false
+                    importDialog = true
+                },
+            ),
+        )
     }
 
     if (importDialog) {
@@ -251,6 +278,33 @@ fun ProfilesScreen(
             },
         )
     }
+}
+
+@Composable
+private fun ProfileActionDialog(
+    title: String,
+    onDismiss: () -> Unit,
+    entries: List<Pair<String, () -> Unit>>,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                entries.forEach { (label, action) ->
+                    FilledTonalButton(onClick = action, modifier = Modifier.fillMaxWidth()) {
+                        Text(label)
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(androidx.compose.ui.res.stringResource(android.R.string.cancel))
+            }
+        },
+    )
 }
 
 private fun readToml(context: Context, uri: Uri): String =

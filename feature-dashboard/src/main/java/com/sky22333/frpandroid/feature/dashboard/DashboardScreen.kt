@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -25,8 +26,10 @@ import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -56,9 +59,8 @@ import com.sky22333.frpandroid.core.frp.FrpRuntimeState
 import com.sky22333.frpandroid.core.frp.FrpType
 import com.sky22333.frpandroid.core.runtime.FrpForegroundService
 import com.sky22333.frpandroid.core.ui.ErrorText
-import com.sky22333.frpandroid.core.ui.InfoCard
+import com.sky22333.frpandroid.core.ui.FrpListRow
 import com.sky22333.frpandroid.core.ui.SectionTitle
-import com.sky22333.frpandroid.core.ui.StatusChip
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -241,48 +243,31 @@ fun DashboardScreen(
             }
         }
         item {
-            ElevatedCard(modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth()) {
-                Row(
-                    modifier = Modifier.padding(20.dp).fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Column {
-                        Text(
-                            text = if (active > 0) stringResource(R.string.dashboard_running) else stringResource(R.string.dashboard_stopped),
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = if (active > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Text(stringResource(R.string.dashboard_instances_summary, running, failed))
-                    }
-                    FilledTonalButton(
-                        onClick = { viewModel.stopAll(context) },
-                        enabled = active > 0 && !state.stopAllBusy,
-                    ) {
-                        if (state.stopAllBusy) {
-                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                        } else {
-                            Icon(Icons.Rounded.Stop, contentDescription = stringResource(R.string.dashboard_stop_all))
-                        }
-                        Text(stringResource(R.string.dashboard_stop_all), modifier = Modifier.padding(start = 8.dp))
-                    }
-                }
-            }
+            RuntimeOverviewCard(
+                active = active,
+                running = running,
+                failed = failed,
+                busy = state.stopAllBusy,
+                onStopAll = { viewModel.stopAll(context) },
+            )
         }
         item {
             Row(
                 modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                StatusChip(
-                    text = stringResource(R.string.dashboard_foreground_service),
-                    running = active > 0,
+                FrpListRow(
+                    icon = Icons.Rounded.Dns,
+                    title = stringResource(R.string.dashboard_foreground_service),
+                    subtitle = if (active > 0) stringResource(R.string.dashboard_running) else stringResource(R.string.dashboard_stopped),
+                    statusRunning = active > 0,
                     modifier = Modifier.weight(1f),
                 )
-                StatusChip(
-                    text = stringResource(R.string.dashboard_boot_start),
-                    running = state.settings.bootStartEnabled,
+                FrpListRow(
+                    icon = Icons.Rounded.PowerSettingsNew,
+                    title = stringResource(R.string.dashboard_boot_start),
+                    subtitle = if (state.settings.bootStartEnabled) stringResource(R.string.dashboard_enabled) else stringResource(R.string.dashboard_disabled),
+                    statusRunning = state.settings.bootStartEnabled,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -341,6 +326,48 @@ private fun TypeSelector(selectedType: FrpType, onSelect: (FrpType) -> Unit) {
 }
 
 @Composable
+private fun RuntimeOverviewCard(
+    active: Int,
+    running: Int,
+    failed: Int,
+    busy: Boolean,
+    onStopAll: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
+        Row(
+            modifier = Modifier.padding(20.dp).fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (active > 0) stringResource(R.string.dashboard_running) else stringResource(R.string.dashboard_stopped),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = if (active > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(stringResource(R.string.dashboard_instances_summary, running, failed))
+            }
+            FilledTonalButton(
+                onClick = onStopAll,
+                enabled = active > 0 && !busy,
+            ) {
+                if (busy) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Icon(Icons.Rounded.Stop, contentDescription = stringResource(R.string.dashboard_stop_all))
+                }
+                Text(stringResource(R.string.dashboard_stop_all), modifier = Modifier.padding(start = 8.dp))
+            }
+        }
+    }
+}
+
+@Composable
 private fun ProfileRuntimeCard(
     profile: FrpProfile,
     state: FrpRuntimeState?,
@@ -351,11 +378,13 @@ private fun ProfileRuntimeCard(
 ) {
     val running = state?.state == FrpInstanceStatus.Running || state?.state == FrpInstanceStatus.Stopping
     val stopping = state?.state == FrpInstanceStatus.Stopping
-    InfoCard(
+    FrpListRow(
         modifier = Modifier.padding(horizontal = 16.dp),
         icon = if (profile.type == FrpType.Client) Icons.Rounded.CloudSync else Icons.Rounded.Dns,
         title = profile.name,
         subtitle = "${profile.type.name.lowercase()} · ${state?.state?.name ?: FrpInstanceStatus.Stopped.name}",
+        status = state?.lastError,
+        statusRunning = running && state?.lastError.isNullOrBlank(),
         trailing = {
             Row {
                 IconButton(
@@ -380,11 +409,4 @@ private fun ProfileRuntimeCard(
             }
         },
     )
-    val lastError = state?.lastError
-    if (!lastError.isNullOrBlank()) {
-        ErrorText(
-            text = lastError,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
-        )
-    }
 }

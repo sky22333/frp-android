@@ -20,6 +20,10 @@
     <string name="settings_diagnostics_details">frplib 可用：%1$b\n运行时已初始化：%2$b\n临时目录：%3$s\n运行中：%4$d，失败：%5$d\n待恢复启动：%6$b\n最近错误：%7$s</string>
     <string name="settings_version">版本</string>
     <string name="settings_pending_start">存在待恢复的开机自启任务</string>
+    <string name="settings_pending_start_hint">点击恢复可运行的隧道</string>
+    <string name="settings_notifications_hint">打开此应用的通知设置</string>
+    <string name="settings_enabled">已启用</string>
+    <string name="settings_disabled">未启用</string>
     <string name="settings_system">跟随系统</string>
     <string name="settings_light">浅色</string>
     <string name="settings_dark">深色</string>

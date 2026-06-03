@@ -81,6 +81,7 @@
 | 2026-06-03 | 优化日志排障体验：新增“仅错误”快捷筛选和“清空”日志入口；清空时取消待执行 flush、清理待写入缓冲和数据库日志，并补 pending buffer 清理单测 | `core-data`、`feature-logs`、resources、tests、docs | 下一步补清空确认和错误详情复制体验 |
 | 2026-06-03 | 收口 UI 和交互体验：浅色/深色/AMOLED 主题显式统一 background 与 surface container，系统导航栏关闭额外对比遮罩；移除顶部全局日志按钮和控制台“新建隧道”重复入口；配置列表明确自启开关语义并补删除确认说明；日志页操作区可换行、清空二次确认、复制/导出 Snackbar、时间格式化；设置页改为可滚动分组并精准显示/引导电池优化状态 | `app`、`core-ui`、`feature-dashboard`、`feature-profiles`、`feature-logs`、`feature-settings`、resources、docs | 下一步用真机/CI 截图验收浅色、深色、AMOLED 背景一致性和小屏日志页换行表现 |
 | 2026-06-03 | 修复 `FrpRepositoryTest` pending 日志清理测试的 `FrpLogSink` 调用签名，按项目真实 `onLog(FrpLog)` 接口传入日志对象 | tests、docs | 下一步继续以 CI 编译结果校准本地无法执行的测试入口 |
+| 2026-06-03 | 进一步统一现代化 UI：新增轻量 `FrpListRow` 统一 Dashboard/Profiles/Logs/Settings 列表视觉；Dashboard 收敛为主状态卡、状态行和统一实例行；Profiles 顶部入口收敛为“新建/导入”两个按钮；Logs 日志行统一为可读排障行；Settings 主要项统一为分组列表行；列表内容变化使用轻量 `animateContentSize()`，不增加持续动画和装饰层 | `core-ui`、`feature-dashboard`、`feature-profiles`、`feature-logs`、`feature-settings`、resources、docs | 下一步继续由 CI 编译和真机截图验收小屏布局、浅色背景一致性和交互流畅度 |
 | 2026-06-03 | 修复日志页重复错误日志滚动崩溃风险：`FrpLog` 保留数据库 `uid`，`LazyColumn` 使用稳定唯一 key | `core-data`、`core-frp`、`feature-logs` | 下一步补日志清空、仅错误快捷筛选和错误详情复制体验 |
 | 2026-06-03 | 补齐 `feature-editor` 使用 Activity Result API 所需的 `androidx.activity:activity-compose` 依赖 | `feature-editor` | 继续检查各 feature 模块依赖与实际 imports 是否一致 |
 | 2026-06-03 | 修复 `feature-logs` 日志导出协程缺少 `kotlinx.coroutines.launch` 导入导致的编译错误 | `feature-logs` | 继续补 UI loading/disabled、删除失败反馈和日志页交互 |

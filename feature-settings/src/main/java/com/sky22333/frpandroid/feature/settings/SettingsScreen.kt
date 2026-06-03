@@ -10,6 +10,8 @@ import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BatterySaver
@@ -18,9 +20,9 @@ import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -32,8 +34,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
@@ -43,6 +47,7 @@ import com.sky22333.frpandroid.core.data.FrpSettings
 import com.sky22333.frpandroid.core.frp.LanguageMode
 import com.sky22333.frpandroid.core.frp.ThemeMode
 import com.sky22333.frpandroid.core.runtime.FrpForegroundService
+import com.sky22333.frpandroid.core.ui.FrpListRow
 import com.sky22333.frpandroid.core.ui.SectionTitle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -99,16 +104,19 @@ fun SettingsScreen(
     LazyColumn(Modifier.fillMaxSize()) {
         if (settings.pendingStart) {
             item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_pending_start)) },
-                    leadingContent = { Icon(Icons.Rounded.PowerSettingsNew, contentDescription = null) },
-                    modifier = Modifier.clickable { viewModel.recoverPendingStart(context) },
+                FrpListRow(
+                    icon = Icons.Rounded.PowerSettingsNew,
+                    title = stringResource(R.string.settings_pending_start),
+                    subtitle = stringResource(R.string.settings_pending_start_hint),
+                    statusRunning = true,
+                    modifier = Modifier.padding(horizontal = 16.dp).clickable { viewModel.recoverPendingStart(context) },
                 )
             }
         }
         item { SectionTitle(stringResource(R.string.settings_background_section)) }
         item {
             ToggleItem(
+                icon = Icons.Rounded.PowerSettingsNew,
                 title = stringResource(R.string.settings_boot_start),
                 checked = settings.bootStartEnabled,
                 onChange = viewModel::setBootStart,
@@ -116,6 +124,7 @@ fun SettingsScreen(
         }
         item {
             ToggleItem(
+                icon = Icons.Rounded.PowerSettingsNew,
                 title = stringResource(R.string.settings_network_reconnect),
                 checked = settings.networkReconnectEnabled,
                 onChange = viewModel::setNetworkReconnect,
@@ -123,69 +132,73 @@ fun SettingsScreen(
         }
         item {
             ToggleItem(
+                icon = Icons.Rounded.PowerSettingsNew,
                 title = stringResource(R.string.settings_auto_retry),
                 checked = settings.autoRetryEnabled,
                 onChange = viewModel::setAutoRetry,
             )
         }
         item {
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.settings_battery)) },
-                supportingContent = {
-                    Text(
-                        stringResource(
-                            if (isIgnoringBatteryOptimizations(context)) {
-                                R.string.settings_battery_allowed
-                            } else {
-                                R.string.settings_battery_restricted
-                            },
-                        ),
-                    )
-                },
-                leadingContent = { Icon(Icons.Rounded.BatterySaver, contentDescription = null) },
-                modifier = Modifier.clickable { openBatterySettings(context) },
+            FrpListRow(
+                icon = Icons.Rounded.BatterySaver,
+                title = stringResource(R.string.settings_battery),
+                subtitle = stringResource(
+                    if (isIgnoringBatteryOptimizations(context)) {
+                        R.string.settings_battery_allowed
+                    } else {
+                        R.string.settings_battery_restricted
+                    },
+                ),
+                statusRunning = isIgnoringBatteryOptimizations(context),
+                modifier = Modifier.padding(horizontal = 16.dp).clickable { openBatterySettings(context) },
             )
         }
         item {
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.settings_notifications)) },
-                leadingContent = { Icon(Icons.Rounded.Notifications, contentDescription = null) },
-                modifier = Modifier.clickable { openNotificationSettings(context) },
+            FrpListRow(
+                icon = Icons.Rounded.Notifications,
+                title = stringResource(R.string.settings_notifications),
+                subtitle = stringResource(R.string.settings_notifications_hint),
+                modifier = Modifier.padding(horizontal = 16.dp).clickable { openNotificationSettings(context) },
             )
         }
         item { SectionTitle(stringResource(R.string.settings_appearance_section)) }
         item {
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.settings_theme)) },
-                supportingContent = { Text(themeLabel(settings.themeMode)) },
-                leadingContent = { Icon(Icons.Rounded.Settings, contentDescription = null) },
-                modifier = Modifier.clickable { themeDialog = true },
+            FrpListRow(
+                icon = Icons.Rounded.Settings,
+                title = stringResource(R.string.settings_theme),
+                subtitle = themeLabel(settings.themeMode),
+                modifier = Modifier.padding(horizontal = 16.dp).clickable { themeDialog = true },
             )
         }
         item {
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.settings_language)) },
-                supportingContent = { Text(languageLabel(settings.languageMode)) },
-                modifier = Modifier.clickable { languageDialog = true },
+            FrpListRow(
+                icon = Icons.Rounded.Settings,
+                title = stringResource(R.string.settings_language),
+                subtitle = languageLabel(settings.languageMode),
+                modifier = Modifier.padding(horizontal = 16.dp).clickable { languageDialog = true },
             )
         }
         item { SectionTitle(stringResource(R.string.settings_logs_section)) }
         item {
-            ListItem(
-                headlineContent = { Text("${stringResource(R.string.settings_log_retention)}: ${settings.logRetentionDays}") },
-                supportingContent = {
+            Card(
+                modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface),
+            ) {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    Text("${stringResource(R.string.settings_log_retention)}: ${settings.logRetentionDays}")
                     Slider(
                         value = settings.logRetentionDays.toFloat(),
                         onValueChange = { viewModel.setRetention(it.toInt()) },
                         valueRange = 1f..30f,
                         steps = 28,
                     )
-                },
-            )
+                }
+            }
         }
         item { SectionTitle(stringResource(R.string.settings_diagnostics_section)) }
         item {
             ToggleItem(
+                icon = Icons.Rounded.BugReport,
                 title = stringResource(R.string.settings_diagnostics),
                 checked = settings.diagnosticsSamplingEnabled,
                 onChange = viewModel::setDiagnostics,
@@ -193,32 +206,31 @@ fun SettingsScreen(
         }
         uiState.diagnostics?.let { diagnostics ->
             item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_diagnostics_summary)) },
-                    supportingContent = {
-                        Text(
-                            stringResource(
-                                R.string.settings_diagnostics_details,
-                                diagnostics.nativeAvailable,
-                                diagnostics.runtimeInitialized,
-                                diagnostics.tempDirStatus,
-                                diagnostics.runningCount,
-                                diagnostics.failedCount,
-                                diagnostics.pendingStart,
-                                diagnostics.lastError ?: "-",
-                            ),
-                        )
-                    },
-                    leadingContent = { Icon(Icons.Rounded.BugReport, contentDescription = null) },
-                    modifier = Modifier.clickable { viewModel.refreshDiagnostics() },
+                FrpListRow(
+                    icon = Icons.Rounded.BugReport,
+                    title = stringResource(R.string.settings_diagnostics_summary),
+                    subtitle = stringResource(
+                        R.string.settings_diagnostics_details,
+                        diagnostics.nativeAvailable,
+                        diagnostics.runtimeInitialized,
+                        diagnostics.tempDirStatus,
+                        diagnostics.runningCount,
+                        diagnostics.failedCount,
+                        diagnostics.pendingStart,
+                        diagnostics.lastError ?: "-",
+                    ),
+                    statusRunning = diagnostics.nativeAvailable,
+                    modifier = Modifier.padding(horizontal = 16.dp).clickable { viewModel.refreshDiagnostics() },
                 )
             }
         }
         item { SectionTitle(stringResource(R.string.settings_about_section)) }
         item {
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.settings_version)) },
-                supportingContent = { Text("0.1.0") },
+            FrpListRow(
+                icon = Icons.Rounded.Settings,
+                title = stringResource(R.string.settings_version),
+                subtitle = "0.1.0",
+                modifier = Modifier.padding(horizontal = 16.dp),
             )
         }
     }
@@ -249,10 +261,14 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun ToggleItem(title: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    ListItem(
-        headlineContent = { Text(title) },
-        trailingContent = { Switch(checked = checked, onCheckedChange = onChange) },
+private fun ToggleItem(icon: ImageVector, title: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    FrpListRow(
+        icon = icon,
+        title = title,
+        subtitle = stringResource(if (checked) R.string.settings_enabled else R.string.settings_disabled),
+        statusRunning = checked,
+        modifier = Modifier.padding(horizontal = 16.dp),
+        trailing = { Switch(checked = checked, onCheckedChange = onChange) },
     )
 }
 
