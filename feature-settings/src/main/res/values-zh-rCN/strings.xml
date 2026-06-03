@@ -6,6 +6,13 @@
     <string name="settings_theme">主题</string>
     <string name="settings_language">语言</string>
     <string name="settings_log_retention">日志保留天数</string>
+    <string name="settings_background_section">后台运行</string>
+    <string name="settings_appearance_section">外观</string>
+    <string name="settings_logs_section">日志</string>
+    <string name="settings_diagnostics_section">诊断</string>
+    <string name="settings_about_section">关于</string>
+    <string name="settings_battery_allowed">此应用已允许忽略电池优化</string>
+    <string name="settings_battery_restricted">电池优化可能限制后台隧道运行</string>
     <string name="settings_network_reconnect">网络恢复后重连</string>
     <string name="settings_auto_retry">失败后自动重试</string>
     <string name="settings_diagnostics">后台诊断采样</string>

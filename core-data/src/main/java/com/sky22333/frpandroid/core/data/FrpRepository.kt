@@ -79,17 +79,18 @@ class FrpRepository(
         dao.upsertProfile(profile.copy(updatedAt = System.currentTimeMillis()).toEntity())
     }
 
-    suspend fun deleteProfile(id: String) {
+    suspend fun deleteProfile(id: String): FrpResult {
         val profile = dao.getProfile(id)?.toModel()
         if (profile != null) {
             val state = dao.getRuntimeStates().firstOrNull { it.id == id }?.state
             if (state == FrpInstanceStatus.Running || state == FrpInstanceStatus.Stopping || state == FrpInstanceStatus.Failed) {
                 val stopResult = stop(profile)
-                if (!stopResult.isSuccess) return
+                if (!stopResult.isSuccess) return stopResult
             }
         }
         dao.deleteProfile(id)
         dao.deleteRuntimeState(id)
+        return FrpResult(code = null, message = "")
     }
 
     suspend fun getProfile(id: String): FrpProfile? = dao.getProfile(id)?.toModel()
@@ -249,6 +250,15 @@ class FrpRepository(
     suspend fun pruneLogs(retentionDays: Int) {
         val olderThan = System.currentTimeMillis() - retentionDays.coerceAtLeast(1) * 24L * 60L * 60L * 1000L
         dao.deleteLogsOlderThan(olderThan)
+    }
+
+    suspend fun clearLogs() {
+        logMutex.withLock {
+            flushJob?.cancel()
+            flushJob = null
+            pendingLogBuffer.clear()
+        }
+        dao.clearLogs()
     }
 
     suspend fun setBootStartEnabled(enabled: Boolean) = settingsStore.setBootStartEnabled(enabled)

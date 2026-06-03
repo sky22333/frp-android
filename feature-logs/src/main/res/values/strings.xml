@@ -8,4 +8,11 @@
     <string name="logs_export">Export logs</string>
     <string name="logs_empty">No logs</string>
     <string name="logs_all">All</string>
+    <string name="logs_errors_only">Errors only</string>
+    <string name="logs_clear">Clear</string>
+    <string name="logs_clear_confirm_title">Clear logs?</string>
+    <string name="logs_clear_confirm_message">This removes all saved logs and pending log entries.</string>
+    <string name="logs_copied_errors">%1$d error logs copied</string>
+    <string name="logs_no_errors">No error logs to copy</string>
+    <string name="logs_export_started">Export started</string>
 </resources>

@@ -6,5 +6,7 @@
     <string name="profiles_paste_import">Paste TOML</string>
     <string name="profiles_delete">Delete</string>
     <string name="profiles_auto_start">Auto start</string>
+    <string name="profiles_manual_start">Manual start</string>
+    <string name="profiles_delete_message">Delete %1$s? If this tunnel is running, frp-android will stop it first. The profile will not be deleted if stopping fails.</string>
     <string name="profiles_empty">No profiles</string>
 </resources>

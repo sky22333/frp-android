@@ -25,7 +25,6 @@ import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Stop
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalButton
@@ -75,6 +74,7 @@ data class DashboardUiState(
     val settings: FrpSettings = FrpSettings(),
     val busyProfileIds: Set<String> = emptySet(),
     val stopAllBusy: Boolean = false,
+    val actionError: String? = null,
 )
 
 private enum class PendingRuntimeAction {
@@ -87,6 +87,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     private val selectedType = MutableStateFlow(FrpType.Client)
     private val busyProfileIds = MutableStateFlow<Set<String>>(emptySet())
     private val stopAllBusy = MutableStateFlow(false)
+    private val actionError = MutableStateFlow<String?>(null)
 
     private val baseUiState = combine(
         selectedType,
@@ -101,8 +102,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         baseUiState,
         busyProfileIds,
         stopAllBusy,
-    ) { state, busyIds, allBusy ->
-        state.copy(busyProfileIds = busyIds, stopAllBusy = allBusy)
+        actionError,
+    ) { state, busyIds, allBusy, error ->
+        state.copy(busyProfileIds = busyIds, stopAllBusy = allBusy, actionError = error)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardUiState())
 
     init {
@@ -124,38 +126,51 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     fun stopAll(context: Context) {
         if (stopAllBusy.value) return
         stopAllBusy.value = true
+        actionError.value = null
         runCatching {
             FrpForegroundService.stopAll(context)
         }.onFailure {
+            actionError.value = it.message
             stopAllBusy.value = false
         }
     }
 
     fun start(context: Context, profile: FrpProfile) {
         if (!markBusy(profile.id)) return
+        actionError.value = null
         runCatching {
             FrpForegroundService.startProfile(context, profile.id)
         }.onFailure {
+            actionError.value = it.message
             busyProfileIds.update { it - profile.id }
         }
     }
 
     fun stop(context: Context, profile: FrpProfile) {
         if (!markBusy(profile.id)) return
+        actionError.value = null
         runCatching {
             FrpForegroundService.stopProfile(context, profile.id)
         }.onFailure {
+            actionError.value = it.message
             busyProfileIds.update { it - profile.id }
         }
     }
 
     fun restart(context: Context, profile: FrpProfile) {
         if (!markBusy(profile.id)) return
+        actionError.value = null
         viewModelScope.launch {
             val result = repository.stop(profile)
             if (result.isSuccess) {
-                FrpForegroundService.startProfile(context, profile.id)
+                runCatching {
+                    FrpForegroundService.startProfile(context, profile.id)
+                }.onFailure {
+                    actionError.value = it.message
+                    busyProfileIds.update { busy -> busy - profile.id }
+                }
             } else {
+                actionError.value = result.message
                 busyProfileIds.update { it - profile.id }
             }
         }
@@ -172,7 +187,6 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 fun DashboardScreen(
     viewModel: DashboardViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
     onOpenProfiles: () -> Unit,
-    onNewTunnel: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -217,6 +231,14 @@ fun DashboardScreen(
     ) {
         item {
             TypeSelector(state.selectedType, viewModel::selectType)
+        }
+        state.actionError?.let { error ->
+            item {
+                ErrorText(
+                    text = error,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
         }
         item {
             ElevatedCard(modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth()) {
@@ -294,14 +316,6 @@ fun DashboardScreen(
                 onStop = { viewModel.stop(context, profile) },
                 onRestart = { runWithNotificationPermission(profile, PendingRuntimeAction.Restart) },
             )
-        }
-        item {
-            Button(
-                onClick = onNewTunnel,
-                modifier = Modifier.padding(16.dp).fillMaxWidth(),
-            ) {
-                Text("+ ${stringResource(R.string.dashboard_new_tunnel)}")
-            }
         }
     }
 }

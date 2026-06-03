@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -316,14 +317,44 @@ class FrpRepositoryTest {
         assertTrue(profiles.isEmpty())
     }
 
-    private fun TestScope.repository(dao: FakeFrpDao, runtime: FakeRuntime): FrpRepository =
+    @Test
+    fun clearLogsRemovesPersistedLogs() = runTest {
+        val dao = FakeFrpDao().apply {
+            insertLogs(listOf(FrpLogEntity(instanceId = profile.id, type = "client", level = "error", message = "failed", time = 1)))
+        }
+        val repository = repository(dao, FakeRuntime())
+
+        repository.clearLogs()
+
+        assertEquals(0, dao.logCount())
+    }
+
+    @Test
+    fun clearLogsDropsPendingBufferedLogs() = runTest {
+        val dao = FakeFrpDao()
+        val runtime = FakeRuntime()
+        val repository = repository(dao, runtime, logFlushDelayMs = 1_000)
+
+        repository.initialize()
+        runtime.logSink?.onLog(profile.id, "client", "error", "failed")
+        repository.clearLogs()
+        advanceTimeBy(1_000)
+
+        assertEquals(0, dao.logCount())
+    }
+
+    private fun TestScope.repository(
+        dao: FakeFrpDao,
+        runtime: FakeRuntime,
+        logFlushDelayMs: Long = 0,
+    ): FrpRepository =
         FrpRepository(
             dao = dao,
             settingsStore = FakeSettings(),
             appCacheDir = File("build/test-cache"),
             runtimeManager = runtime,
             scope = kotlinx.coroutines.CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
-            logFlushDelayMs = 0,
+            logFlushDelayMs = logFlushDelayMs,
         )
 }
 
@@ -341,12 +372,15 @@ private class FakeRuntime(
     var stopCalls = 0
     var stopAllCalls = 0
     var listInstancesCalls = 0
+    var logSink: FrpLogSink? = null
 
     override val isNativeAvailable: Boolean = true
 
     override fun configureTempDir(directory: File): FrpResult = tempDirResult
     override fun validateToml(toml: String): FrpResult = validateResult
-    override suspend fun registerLogCallbackOnce(sink: FrpLogSink) = Unit
+    override suspend fun registerLogCallbackOnce(sink: FrpLogSink) {
+        logSink = sink
+    }
     override suspend fun start(profile: FrpProfile): FrpResult {
         startCalls += 1
         return startResult
@@ -443,6 +477,10 @@ private class FakeFrpDao : FrpDao {
     override suspend fun deleteLogsOlderThan(olderThan: Long) {
         logs.removeAll { it.time < olderThan }
     }
+    override suspend fun clearLogs() {
+        logs.clear()
+    }
 
     fun runtimeState(id: String): FrpRuntimeStateEntity? = states[id]
+    fun logCount(): Int = logs.size
 }

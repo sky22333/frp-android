@@ -5,10 +5,12 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BatterySaver
 import androidx.compose.material.icons.rounded.BugReport
@@ -41,6 +43,7 @@ import com.sky22333.frpandroid.core.data.FrpSettings
 import com.sky22333.frpandroid.core.frp.LanguageMode
 import com.sky22333.frpandroid.core.frp.ThemeMode
 import com.sky22333.frpandroid.core.runtime.FrpForegroundService
+import com.sky22333.frpandroid.core.ui.SectionTitle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -93,91 +96,131 @@ fun SettingsScreen(
         viewModel.refreshDiagnostics()
     }
 
-    Column(Modifier.fillMaxSize()) {
+    LazyColumn(Modifier.fillMaxSize()) {
         if (settings.pendingStart) {
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.settings_pending_start)) },
-                leadingContent = { Icon(Icons.Rounded.PowerSettingsNew, contentDescription = null) },
-                modifier = Modifier.clickable { viewModel.recoverPendingStart(context) },
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.settings_pending_start)) },
+                    leadingContent = { Icon(Icons.Rounded.PowerSettingsNew, contentDescription = null) },
+                    modifier = Modifier.clickable { viewModel.recoverPendingStart(context) },
+                )
+            }
+        }
+        item { SectionTitle(stringResource(R.string.settings_background_section)) }
+        item {
+            ToggleItem(
+                title = stringResource(R.string.settings_boot_start),
+                checked = settings.bootStartEnabled,
+                onChange = viewModel::setBootStart,
             )
         }
-        ToggleItem(
-            title = stringResource(R.string.settings_boot_start),
-            checked = settings.bootStartEnabled,
-            onChange = viewModel::setBootStart,
-        )
-        ToggleItem(
-            title = stringResource(R.string.settings_network_reconnect),
-            checked = settings.networkReconnectEnabled,
-            onChange = viewModel::setNetworkReconnect,
-        )
-        ToggleItem(
-            title = stringResource(R.string.settings_auto_retry),
-            checked = settings.autoRetryEnabled,
-            onChange = viewModel::setAutoRetry,
-        )
-        ToggleItem(
-            title = stringResource(R.string.settings_diagnostics),
-            checked = settings.diagnosticsSamplingEnabled,
-            onChange = viewModel::setDiagnostics,
-        )
-        uiState.diagnostics?.let { diagnostics ->
+        item {
+            ToggleItem(
+                title = stringResource(R.string.settings_network_reconnect),
+                checked = settings.networkReconnectEnabled,
+                onChange = viewModel::setNetworkReconnect,
+            )
+        }
+        item {
+            ToggleItem(
+                title = stringResource(R.string.settings_auto_retry),
+                checked = settings.autoRetryEnabled,
+                onChange = viewModel::setAutoRetry,
+            )
+        }
+        item {
             ListItem(
-                headlineContent = { Text(stringResource(R.string.settings_diagnostics_summary)) },
+                headlineContent = { Text(stringResource(R.string.settings_battery)) },
                 supportingContent = {
                     Text(
                         stringResource(
-                            R.string.settings_diagnostics_details,
-                            diagnostics.nativeAvailable,
-                            diagnostics.runtimeInitialized,
-                            diagnostics.tempDirStatus,
-                            diagnostics.runningCount,
-                            diagnostics.failedCount,
-                            diagnostics.pendingStart,
-                            diagnostics.lastError ?: "-",
+                            if (isIgnoringBatteryOptimizations(context)) {
+                                R.string.settings_battery_allowed
+                            } else {
+                                R.string.settings_battery_restricted
+                            },
                         ),
                     )
                 },
-                leadingContent = { Icon(Icons.Rounded.BugReport, contentDescription = null) },
-                modifier = Modifier.clickable { viewModel.refreshDiagnostics() },
+                leadingContent = { Icon(Icons.Rounded.BatterySaver, contentDescription = null) },
+                modifier = Modifier.clickable { openBatterySettings(context) },
             )
         }
-        ListItem(
-            headlineContent = { Text(stringResource(R.string.settings_notifications)) },
-            leadingContent = { Icon(Icons.Rounded.Notifications, contentDescription = null) },
-            modifier = Modifier.clickable { openNotificationSettings(context) },
-        )
-        ListItem(
-            headlineContent = { Text(stringResource(R.string.settings_battery)) },
-            leadingContent = { Icon(Icons.Rounded.BatterySaver, contentDescription = null) },
-            modifier = Modifier.clickable { openBatterySettings(context) },
-        )
-        ListItem(
-            headlineContent = { Text(stringResource(R.string.settings_theme)) },
-            supportingContent = { Text(settings.themeMode.name) },
-            leadingContent = { Icon(Icons.Rounded.Settings, contentDescription = null) },
-            modifier = Modifier.clickable { themeDialog = true },
-        )
-        ListItem(
-            headlineContent = { Text(stringResource(R.string.settings_language)) },
-            supportingContent = { Text(settings.languageMode.name) },
-            modifier = Modifier.clickable { languageDialog = true },
-        )
-        ListItem(
-            headlineContent = { Text("${stringResource(R.string.settings_log_retention)}: ${settings.logRetentionDays}") },
-            supportingContent = {
-                Slider(
-                    value = settings.logRetentionDays.toFloat(),
-                    onValueChange = { viewModel.setRetention(it.toInt()) },
-                    valueRange = 1f..30f,
-                    steps = 28,
+        item {
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.settings_notifications)) },
+                leadingContent = { Icon(Icons.Rounded.Notifications, contentDescription = null) },
+                modifier = Modifier.clickable { openNotificationSettings(context) },
+            )
+        }
+        item { SectionTitle(stringResource(R.string.settings_appearance_section)) }
+        item {
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.settings_theme)) },
+                supportingContent = { Text(themeLabel(settings.themeMode)) },
+                leadingContent = { Icon(Icons.Rounded.Settings, contentDescription = null) },
+                modifier = Modifier.clickable { themeDialog = true },
+            )
+        }
+        item {
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.settings_language)) },
+                supportingContent = { Text(languageLabel(settings.languageMode)) },
+                modifier = Modifier.clickable { languageDialog = true },
+            )
+        }
+        item { SectionTitle(stringResource(R.string.settings_logs_section)) }
+        item {
+            ListItem(
+                headlineContent = { Text("${stringResource(R.string.settings_log_retention)}: ${settings.logRetentionDays}") },
+                supportingContent = {
+                    Slider(
+                        value = settings.logRetentionDays.toFloat(),
+                        onValueChange = { viewModel.setRetention(it.toInt()) },
+                        valueRange = 1f..30f,
+                        steps = 28,
+                    )
+                },
+            )
+        }
+        item { SectionTitle(stringResource(R.string.settings_diagnostics_section)) }
+        item {
+            ToggleItem(
+                title = stringResource(R.string.settings_diagnostics),
+                checked = settings.diagnosticsSamplingEnabled,
+                onChange = viewModel::setDiagnostics,
+            )
+        }
+        uiState.diagnostics?.let { diagnostics ->
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.settings_diagnostics_summary)) },
+                    supportingContent = {
+                        Text(
+                            stringResource(
+                                R.string.settings_diagnostics_details,
+                                diagnostics.nativeAvailable,
+                                diagnostics.runtimeInitialized,
+                                diagnostics.tempDirStatus,
+                                diagnostics.runningCount,
+                                diagnostics.failedCount,
+                                diagnostics.pendingStart,
+                                diagnostics.lastError ?: "-",
+                            ),
+                        )
+                    },
+                    leadingContent = { Icon(Icons.Rounded.BugReport, contentDescription = null) },
+                    modifier = Modifier.clickable { viewModel.refreshDiagnostics() },
                 )
-            },
-        )
-        ListItem(
-            headlineContent = { Text(stringResource(R.string.settings_version)) },
-            supportingContent = { Text("0.1.0") },
-        )
+            }
+        }
+        item { SectionTitle(stringResource(R.string.settings_about_section)) }
+        item {
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.settings_version)) },
+                supportingContent = { Text("0.1.0") },
+            )
+        }
     }
 
     if (themeDialog) {
@@ -256,5 +299,43 @@ private fun openNotificationSettings(context: Context) {
 }
 
 private fun openBatterySettings(context: Context) {
-    context.startActivity(Intent(AndroidSettings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !isIgnoringBatteryOptimizations(context)) {
+        val requestIntent = Intent(AndroidSettings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+            .setData(Uri.parse("package:${context.packageName}"))
+        runCatching {
+            context.startActivity(requestIntent)
+        }.onSuccess {
+            return
+        }
+    }
+    val detailsIntent = Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS)
+        .setData(Uri.parse("package:${context.packageName}"))
+    runCatching {
+        context.startActivity(detailsIntent)
+    }.onFailure {
+        context.startActivity(Intent(AndroidSettings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+    }
 }
+
+private fun isIgnoringBatteryOptimizations(context: Context): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
+    val powerManager = context.getSystemService(PowerManager::class.java)
+    return powerManager.isIgnoringBatteryOptimizations(context.packageName)
+}
+
+@Composable
+private fun themeLabel(mode: ThemeMode): String =
+    when (mode) {
+        ThemeMode.System -> stringResource(R.string.settings_system)
+        ThemeMode.Light -> stringResource(R.string.settings_light)
+        ThemeMode.Dark -> stringResource(R.string.settings_dark)
+        ThemeMode.Amoled -> stringResource(R.string.settings_amoled)
+    }
+
+@Composable
+private fun languageLabel(mode: LanguageMode): String =
+    when (mode) {
+        LanguageMode.System -> stringResource(R.string.settings_system)
+        LanguageMode.Chinese -> stringResource(R.string.settings_chinese)
+        LanguageMode.English -> stringResource(R.string.settings_english)
+    }

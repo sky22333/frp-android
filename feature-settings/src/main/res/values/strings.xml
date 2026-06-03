@@ -6,6 +6,13 @@
     <string name="settings_theme">Theme</string>
     <string name="settings_language">Language</string>
     <string name="settings_log_retention">Log retention days</string>
+    <string name="settings_background_section">Background</string>
+    <string name="settings_appearance_section">Appearance</string>
+    <string name="settings_logs_section">Logs</string>
+    <string name="settings_diagnostics_section">Diagnostics</string>
+    <string name="settings_about_section">About</string>
+    <string name="settings_battery_allowed">Battery optimization is ignored for this app</string>
+    <string name="settings_battery_restricted">Battery optimization may restrict background tunnels</string>
     <string name="settings_network_reconnect">Reconnect after network recovery</string>
     <string name="settings_auto_retry">Auto retry after failure</string>
     <string name="settings_diagnostics">Background diagnostics sampling</string>

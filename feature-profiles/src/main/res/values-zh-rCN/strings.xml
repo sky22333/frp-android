@@ -6,5 +6,7 @@
     <string name="profiles_paste_import">粘贴 TOML</string>
     <string name="profiles_delete">删除</string>
     <string name="profiles_auto_start">自启</string>
+    <string name="profiles_manual_start">手动启动</string>
+    <string name="profiles_delete_message">删除 %1$s？如果该隧道正在运行，frp-android 会先停止实例；停止失败时不会删除配置。</string>
     <string name="profiles_empty">暂无配置</string>
 </resources>

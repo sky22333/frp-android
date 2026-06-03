@@ -45,6 +45,7 @@ import androidx.lifecycle.viewModelScope
 import com.sky22333.frpandroid.core.data.AppGraph
 import com.sky22333.frpandroid.core.frp.FrpProfile
 import com.sky22333.frpandroid.core.frp.FrpType
+import com.sky22333.frpandroid.core.ui.ErrorText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -60,6 +61,8 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     private val mutableBusyProfileIds = MutableStateFlow<Set<String>>(emptySet())
     val busyProfileIds: StateFlow<Set<String>> = mutableBusyProfileIds
+    private val mutableError = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = mutableError
 
     fun create(type: FrpType, toml: String? = null) {
         val id = UUID.randomUUID().toString()
@@ -85,9 +88,13 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
     fun delete(profile: FrpProfile) {
         if (profile.id in mutableBusyProfileIds.value) return
         mutableBusyProfileIds.update { it + profile.id }
+        mutableError.value = null
         viewModelScope.launch {
             try {
-                repository.deleteProfile(profile.id)
+                val result = repository.deleteProfile(profile.id)
+                if (!result.isSuccess) {
+                    mutableError.value = result.message
+                }
             } finally {
                 mutableBusyProfileIds.update { it - profile.id }
             }
@@ -128,6 +135,7 @@ fun ProfilesScreen(
 ) {
     val profiles by viewModel.profiles.collectAsStateWithLifecycle()
     val busyProfileIds by viewModel.busyProfileIds.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
     var importDialog by remember { mutableStateOf(false) }
     var deleteCandidate by remember { mutableStateOf<FrpProfile?>(null) }
     val documentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -158,6 +166,12 @@ fun ProfilesScreen(
         if (profiles.isEmpty()) {
             Text(stringResource(R.string.profiles_empty), modifier = Modifier.padding(16.dp))
         }
+        error?.let { message ->
+            ErrorText(
+                text = message,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+        }
 
         LazyColumn {
             items(profiles, key = { it.id }) { profile ->
@@ -171,7 +185,19 @@ fun ProfilesScreen(
                         )
                     },
                     headlineContent = { Text(profile.name) },
-                    supportingContent = { Text(profile.type.name) },
+                    supportingContent = {
+                        Text(
+                            "${profile.type.name} · ${
+                                stringResource(
+                                    if (profile.autoStart) {
+                                        R.string.profiles_auto_start
+                                    } else {
+                                        R.string.profiles_manual_start
+                                    },
+                                )
+                            }",
+                        )
+                    },
                     trailingContent = {
                         Row {
                             Switch(
@@ -207,7 +233,7 @@ fun ProfilesScreen(
         AlertDialog(
             onDismissRequest = { deleteCandidate = null },
             title = { Text(stringResource(R.string.profiles_delete)) },
-            text = { Text(profile.name) },
+            text = { Text(stringResource(R.string.profiles_delete_message, profile.name)) },
             confirmButton = {
                 TextButton(
                     onClick = {

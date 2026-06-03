@@ -77,6 +77,9 @@
 | 2026-06-03 | 修复日志页筛选 chip 的 `all` 硬编码，补充中英文资源，保持 UI 文案资源化 | `feature-logs`、resources、docs | 下一步继续清理其他硬编码展示和补日志交互 |
 | 2026-06-03 | 统一 App 根背景、TopAppBar、NavigationBar、系统状态栏和系统导航栏颜色为主题背景色，移除默认容器色和 `styles.xml` 系统栏硬编码造成的突兀色块 | `app`、resources、docs | 下一步用截图/真机确认浅色、深色、AMOLED 三种主题视觉一致性 |
 | 2026-06-03 | 补齐 Dashboard 启动/停止/重启/停止全部、Editor 保存/保存并重启、Profiles 删除的 busy/disabled 状态；Dashboard 服务启动入口异常时会立即清理 busy，避免重复点击只依赖 Repository 锁兜底 | `feature-dashboard`、`feature-editor`、`feature-profiles`、docs | 下一步补页面级错误反馈 |
+| 2026-06-03 | 补齐页面级错误反馈：Dashboard 操作失败、Editor 未运行配置保存后启动服务失败、Profiles 删除停止失败都会在当前页面展示错误 | `feature-dashboard`、`feature-editor`、`feature-profiles`、docs | 下一步继续补更细的错误本地化标题 |
+| 2026-06-03 | 优化日志排障体验：新增“仅错误”快捷筛选和“清空”日志入口；清空时取消待执行 flush、清理待写入缓冲和数据库日志，并补 pending buffer 清理单测 | `core-data`、`feature-logs`、resources、tests、docs | 下一步补清空确认和错误详情复制体验 |
+| 2026-06-03 | 收口 UI 和交互体验：浅色/深色/AMOLED 主题显式统一 background 与 surface container，系统导航栏关闭额外对比遮罩；移除顶部全局日志按钮和控制台“新建隧道”重复入口；配置列表明确自启开关语义并补删除确认说明；日志页操作区可换行、清空二次确认、复制/导出 Snackbar、时间格式化；设置页改为可滚动分组并精准显示/引导电池优化状态 | `app`、`core-ui`、`feature-dashboard`、`feature-profiles`、`feature-logs`、`feature-settings`、resources、docs | 下一步用真机/CI 截图验收浅色、深色、AMOLED 背景一致性和小屏日志页换行表现 |
 | 2026-06-03 | 修复日志页重复错误日志滚动崩溃风险：`FrpLog` 保留数据库 `uid`，`LazyColumn` 使用稳定唯一 key | `core-data`、`core-frp`、`feature-logs` | 下一步补日志清空、仅错误快捷筛选和错误详情复制体验 |
 | 2026-06-03 | 补齐 `feature-editor` 使用 Activity Result API 所需的 `androidx.activity:activity-compose` 依赖 | `feature-editor` | 继续检查各 feature 模块依赖与实际 imports 是否一致 |
 | 2026-06-03 | 修复 `feature-logs` 日志导出协程缺少 `kotlinx.coroutines.launch` 导入导致的编译错误 | `feature-logs` | 继续补 UI loading/disabled、删除失败反馈和日志页交互 |

@@ -124,6 +124,9 @@ interface FrpDao {
 
     @Query("DELETE FROM logs WHERE time < :olderThan")
     suspend fun deleteLogsOlderThan(olderThan: Long)
+
+    @Query("DELETE FROM logs")
+    suspend fun clearLogs()
 }
 
 @Database(

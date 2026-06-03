@@ -11,6 +11,5 @@
     <string name="dashboard_boot_start">Boot start</string>
     <string name="dashboard_profiles">Tunnel instances</string>
     <string name="dashboard_view_all">View all</string>
-    <string name="dashboard_new_tunnel">New tunnel</string>
     <string name="dashboard_no_profiles">No tunnel profiles yet</string>
 </resources>

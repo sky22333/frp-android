@@ -3,6 +3,7 @@ package com.sky22333.frpandroid
 import android.content.Intent
 import android.content.Context
 import android.content.ContextWrapper
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.SystemBarStyle
 import androidx.activity.ComponentActivity
@@ -17,7 +18,6 @@ import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -87,10 +87,15 @@ private fun ApplySystemBars() {
     val darkMode = background.luminance() < 0.5f
     SideEffect {
         if (!view.isInEditMode) {
-            view.context.findActivity()?.enableEdgeToEdge(
-                statusBarStyle = SystemBarStyle.auto(backgroundArgb, backgroundArgb) { darkMode },
-                navigationBarStyle = SystemBarStyle.auto(backgroundArgb, backgroundArgb) { darkMode },
-            )
+            view.context.findActivity()?.let { activity ->
+                activity.enableEdgeToEdge(
+                    statusBarStyle = SystemBarStyle.auto(backgroundArgb, backgroundArgb) { darkMode },
+                    navigationBarStyle = SystemBarStyle.auto(backgroundArgb, backgroundArgb) { darkMode },
+                )
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    activity.window.isNavigationBarContrastEnforced = false
+                }
+            }
         }
     }
 }
@@ -130,11 +135,6 @@ private fun FrpApp(startDestination: String?) {
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_title)) },
-                actions = {
-                    IconButton(onClick = { navController.navigate(Screen.Logs.route) }) {
-                        Icon(Icons.AutoMirrored.Rounded.Article, contentDescription = stringResource(R.string.nav_logs))
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     scrolledContainerColor = MaterialTheme.colorScheme.background,
@@ -161,7 +161,6 @@ private fun NavGraphBuilder.frpGraph(navController: NavHostController) {
     composable(Screen.Dashboard.route) {
         DashboardScreen(
             onOpenProfiles = { navController.navigate(Screen.Profiles.route) },
-            onNewTunnel = { navController.navigate(Screen.Profiles.route) },
         )
     }
     composable(Screen.Profiles.route) {

@@ -112,14 +112,19 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                 val updated = profile.copy(name = state.name, toml = state.toml)
                 val wasActive = repository.isProfileActive(updated.id)
                 val result = repository.saveAndRestart(updated)
+                var launchError: String? = null
                 if (result.isSuccess && !wasActive) {
-                    FrpForegroundService.startProfile(context, updated.id)
+                    runCatching {
+                        FrpForegroundService.startProfile(context, updated.id)
+                    }.onFailure {
+                        launchError = it.message
+                    }
                 }
                 mutableState.update {
                     it.copy(
-                        profile = if (result.isSuccess || result.isAlreadyRunning) updated else profile,
-                        validationMessage = if (result.isSuccess) null else result.message,
-                        validationError = !result.isSuccess,
+                        profile = if ((result.isSuccess && launchError == null) || result.isAlreadyRunning) updated else profile,
+                        validationMessage = launchError ?: if (result.isSuccess) null else result.message,
+                        validationError = launchError != null || !result.isSuccess,
                     )
                 }
             } finally {
