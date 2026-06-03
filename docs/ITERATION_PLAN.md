@@ -92,3 +92,4 @@
 | 2026-06-03 | 补齐 `feature-editor` 使用 Activity Result API 所需的 `androidx.activity:activity-compose` 依赖 | `feature-editor` | 继续检查各 feature 模块依赖与实际 imports 是否一致 |
 | 2026-06-03 | 修复 `feature-logs` 日志导出协程缺少 `kotlinx.coroutines.launch` 导入导致的编译错误 | `feature-logs` | 继续补 UI loading/disabled、删除失败反馈和日志页交互 |
 | 2026-06-03 | 新增本文档；整理已完善内容和后续计划；明确每次修改必须同步记录 | docs | 优先补 UI loading/disabled、删除失败反馈和日志页交互 |
+| 2026-06-03 | 修复日志复制和语言切换闭环：日志页复制按钮从错误日志专用改为复制当前筛选后的可见日志，删除 `copyErrors` 旧语义和 errors 文案；语言切换移除 Compose 内 `ApplyLanguage`/AppCompat locale 旧入口，改为 Activity `attachBaseContext` 阶段按 DataStore 语言包装 Context，并在设置页切换语言保存后重建 Activity；清理不再使用的 AppCompat 依赖 | `app`、`feature-logs`、`feature-settings`、resources、Gradle、docs | 继续由 CI/真机确认英文、中文、跟随系统三种模式下导航、设置、日志页面文案一致刷新 |

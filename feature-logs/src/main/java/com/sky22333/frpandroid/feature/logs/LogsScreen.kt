@@ -109,8 +109,8 @@ fun LogsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val snackbarScope = rememberCoroutineScope()
     val timeFormatter = remember { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()) }
-    val copiedErrorsText = stringResource(R.string.logs_copied_errors)
-    val noErrorsText = stringResource(R.string.logs_no_errors)
+    val copiedLogsText = stringResource(R.string.logs_copied_logs)
+    val noLogsText = stringResource(R.string.logs_no_logs_to_copy)
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
@@ -158,15 +158,16 @@ fun LogsScreen(
                     Switch(checked = state.filter.paused, onCheckedChange = viewModel::setPaused)
                     IconButton(
                         onClick = {
-                            val count = copyErrors(context, state.logs)
+                            val count = copyLogs(context, state.logs)
                             snackbarScope.launch {
                                 snackbarHostState.showSnackbar(
-                                    if (count > 0) copiedErrorsText.format(count) else noErrorsText,
+                                    if (count > 0) copiedLogsText.format(count) else noLogsText,
                                 )
                             }
                         },
+                        enabled = state.logs.isNotEmpty(),
                     ) {
-                        Icon(Icons.Rounded.ContentCopy, contentDescription = stringResource(R.string.logs_copy_errors))
+                        Icon(Icons.Rounded.ContentCopy, contentDescription = stringResource(R.string.logs_copy_logs))
                     }
                     IconButton(
                         onClick = viewModel::clearLogs,
@@ -192,7 +193,7 @@ fun LogsScreen(
                         modifier = Modifier.padding(horizontal = 16.dp),
                         icon = Icons.Rounded.BugReport,
                         title = log.message,
-                        subtitle = "${log.type}/${log.instanceId.ifBlank { "-" }} · ${timeFormatter.format(Date(log.time))}",
+                        subtitle = "${log.type}/${log.instanceId.ifBlank { "-" }} - ${timeFormatter.format(Date(log.time))}",
                         status = log.level,
                         statusRunning = log.level != "error",
                     )
@@ -206,11 +207,10 @@ fun LogsScreen(
     }
 }
 
-private fun copyErrors(context: Context, logs: List<FrpLog>): Int {
-    val errors = logs.filter { it.level == "error" }
-    if (errors.isEmpty()) return 0
-    val text = errors.joinToString("\n") { it.message }
+private fun copyLogs(context: Context, logs: List<FrpLog>): Int {
+    if (logs.isEmpty()) return 0
+    val text = logs.joinToString("\n") { it.message }
     val clipboard = context.getSystemService(ClipboardManager::class.java)
-    clipboard.setPrimaryClip(ClipData.newPlainText("frp errors", text))
-    return errors.size
+    clipboard.setPrimaryClip(ClipData.newPlainText("frp logs", text))
+    return logs.size
 }

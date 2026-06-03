@@ -9,7 +9,6 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.automirrored.rounded.Article
@@ -34,10 +33,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraphBuilder
@@ -48,7 +47,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.sky22333.frpandroid.core.data.AppGraph
 import com.sky22333.frpandroid.core.data.FrpSettings
-import com.sky22333.frpandroid.core.frp.LanguageMode
 import com.sky22333.frpandroid.core.runtime.FrpForegroundService
 import com.sky22333.frpandroid.core.ui.FrpAndroidTheme
 import com.sky22333.frpandroid.feature.dashboard.DashboardScreen
@@ -60,13 +58,17 @@ import com.sky22333.frpandroid.feature.settings.SettingsScreen
 class MainActivity : ComponentActivity() {
     private val startDestination = mutableStateOf<String?>(null)
 
+    override fun attachBaseContext(newBase: Context) {
+        val languageMode = LocaleController.readLanguageMode(newBase)
+        super.attachBaseContext(LocaleController.wrap(newBase, languageMode))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         startDestination.value = intent?.getStringExtra(FrpForegroundService.EXTRA_START_DESTINATION)
         val repository = AppGraph.repository(this)
         setContent {
             val settings by repository.settings.collectAsStateWithLifecycle(initialValue = FrpSettings())
-            ApplyLanguage(settings.languageMode)
             FrpAndroidTheme(themeMode = settings.themeMode) {
                 ApplySystemBars()
                 FrpApp(startDestination = startDestination.value)
@@ -107,18 +109,6 @@ private tailrec fun Context.findActivity(): ComponentActivity? =
         is ContextWrapper -> baseContext.findActivity()
         else -> null
     }
-
-@Composable
-private fun ApplyLanguage(languageMode: LanguageMode) {
-    LaunchedEffect(languageMode) {
-        val tags = when (languageMode) {
-            LanguageMode.System -> ""
-            LanguageMode.Chinese -> "zh-CN"
-            LanguageMode.English -> "en"
-        }
-        AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tags))
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -169,7 +159,8 @@ private fun NavGraphBuilder.frpGraph(navController: NavHostController) {
         LogsScreen()
     }
     composable(Screen.Settings.route) {
-        SettingsScreen()
+        val context = LocalContext.current
+        SettingsScreen(onLanguageChanged = { context.findActivity()?.recreate() })
     }
     composable("editor/{profileId}") { backStackEntry ->
         EditorScreen(profileId = backStackEntry.arguments?.getString("profileId").orEmpty())

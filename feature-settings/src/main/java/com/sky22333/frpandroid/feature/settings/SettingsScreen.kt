@@ -73,7 +73,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setDiagnostics(enabled: Boolean) = viewModelScope.launch { repository.setDiagnosticsSamplingEnabled(enabled) }
     fun setRetention(days: Int) = viewModelScope.launch { repository.setLogRetentionDays(days) }
     fun setTheme(mode: ThemeMode) = viewModelScope.launch { repository.setThemeMode(mode) }
-    fun setLanguage(mode: LanguageMode) = viewModelScope.launch { repository.setLanguageMode(mode) }
+    fun setLanguage(mode: LanguageMode, onChanged: () -> Unit = {}) = viewModelScope.launch {
+        repository.setLanguageMode(mode)
+        onChanged()
+    }
     fun refreshDiagnostics() = viewModelScope.launch {
         mutableUiState.update { it.copy(diagnostics = repository.diagnostics()) }
     }
@@ -89,6 +92,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
+    onLanguageChanged: () -> Unit = {},
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -259,9 +263,9 @@ fun SettingsScreen(
             title = stringResource(R.string.settings_language),
             onDismiss = { languageDialog = false },
             entries = listOf(
-                stringResource(R.string.settings_system) to { viewModel.setLanguage(LanguageMode.System) },
-                stringResource(R.string.settings_chinese) to { viewModel.setLanguage(LanguageMode.Chinese) },
-                stringResource(R.string.settings_english) to { viewModel.setLanguage(LanguageMode.English) },
+                stringResource(R.string.settings_system) to { viewModel.setLanguage(LanguageMode.System, onLanguageChanged) },
+                stringResource(R.string.settings_chinese) to { viewModel.setLanguage(LanguageMode.Chinese, onLanguageChanged) },
+                stringResource(R.string.settings_english) to { viewModel.setLanguage(LanguageMode.English, onLanguageChanged) },
             ),
         )
     }
