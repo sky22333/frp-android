@@ -128,8 +128,6 @@ remotePort = 8080
 
 ### 后台容易被杀？
 
-请：
-
 * 允许后台运行
 * 关闭电池优化
 * 锁定应用后台
@@ -143,3 +141,7 @@ remotePort = 8080
 * 配置是否正确
 * 网络是否可达
 * 日志页面输出
+
+### 鸣谢
+
+- [fatedier/frp](https://github.com/fatedier/frp)
