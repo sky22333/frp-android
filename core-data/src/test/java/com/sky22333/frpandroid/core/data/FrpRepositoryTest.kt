@@ -1,6 +1,7 @@
 package com.sky22333.frpandroid.core.data
 
 import com.sky22333.frpandroid.core.frp.FrpInstanceStatus
+import com.sky22333.frpandroid.core.frp.FrpLog
 import com.sky22333.frpandroid.core.frp.FrpLogSink
 import com.sky22333.frpandroid.core.frp.FrpProfile
 import com.sky22333.frpandroid.core.frp.FrpResult
@@ -336,7 +337,7 @@ class FrpRepositoryTest {
         val repository = repository(dao, runtime, logFlushDelayMs = 1_000)
 
         repository.initialize()
-        runtime.logSink?.onLog(profile.id, "client", "error", "failed")
+        runtime.logSink?.onLog(FrpLog(profile.id, "client", "error", "failed", time = 1))
         repository.clearLogs()
         advanceTimeBy(1_000)
 
