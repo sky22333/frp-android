@@ -16,13 +16,16 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 
 class FrpRepository(
@@ -32,14 +35,26 @@ class FrpRepository(
     private val runtimeManager: FrpRuntimeGateway = FrpRuntimeManager(),
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
     private val logFlushDelayMs: Long = 750,
+    private val logBatchSize: Int = 100,
+    private val logBufferLimit: Int = 1_000,
+    private val logTrimInterval: Int = 1_000,
+    private val logMaxCount: Int = 100_000,
 ) {
-    private val pendingLogBuffer = ArrayDeque<FrpLog>()
-    private val logMutex = Mutex()
+    private val logChannel = Channel<FrpLog>(
+        capacity = logBufferLimit,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    private val logWriteMutex = Mutex()
     private val initMutex = Mutex()
     private val runtimeOperationMutex = Mutex()
-    private var flushJob: Job? = null
+    private var logConsumerJob: Job? = null
+    private var logsSinceTrim = 0
     private var initialized = false
     private var runtimeInitResult = FrpResult(code = null, message = "")
+
+    init {
+        startLogConsumer()
+    }
 
     val profiles: Flow<List<FrpProfile>> = dao.observeProfiles().map { entities ->
         entities.map { it.toModel() }
@@ -284,12 +299,16 @@ class FrpRepository(
     }
 
     suspend fun clearLogs() {
-        logMutex.withLock {
-            flushJob?.cancel()
-            flushJob = null
-            pendingLogBuffer.clear()
+        logConsumerJob?.cancelAndJoin()
+        while (logChannel.tryReceive().isSuccess) Unit
+        try {
+            logWriteMutex.withLock {
+                logsSinceTrim = 0
+                dao.clearLogs()
+            }
+        } finally {
+            startLogConsumer()
         }
-        dao.clearLogs()
     }
 
     suspend fun setBootStartEnabled(enabled: Boolean) = settingsStore.setBootStartEnabled(enabled)
@@ -303,7 +322,7 @@ class FrpRepository(
     private suspend fun appendLifecycleLog(id: String, type: FrpType, result: FrpResult, action: String) {
         val level = if (result.isSuccess) "info" else "error"
         val message = if (result.message.isBlank()) "$action success" else "$action ${result.message}"
-        appendLog(FrpLog(id, type.name.lowercase(), level, redact(message), System.currentTimeMillis()))
+        appendLog(FrpLog(id, type.name.lowercase(), level, message, System.currentTimeMillis()))
     }
 
     private suspend fun ensureRuntimeReady(): FrpResult =
@@ -319,35 +338,49 @@ class FrpRepository(
 
             runtimeManager.registerLogCallbackOnce(
                 FrpLogSink { log ->
-                    scope.launch { appendLog(log) }
+                    logChannel.trySend(log)
                 },
             )
             initialized = true
             FrpResult(code = null, message = "")
         }
 
-    private suspend fun appendLog(log: FrpLog) {
-        logMutex.withLock {
-            val safeLog = log.copy(message = redact(log.message))
-            pendingLogBuffer.addLast(safeLog)
-            if (flushJob?.isActive != true) {
-                flushJob = scope.launch {
-                    delay(logFlushDelayMs)
-                    flushLogs()
-                }
-            }
+    private fun appendLog(log: FrpLog) {
+        logChannel.trySend(log)
+    }
+
+    private fun startLogConsumer() {
+        if (logConsumerJob?.isActive == true) return
+        logConsumerJob = scope.launch {
+            consumeLogs()
         }
     }
 
-    private suspend fun flushLogs() {
+    private suspend fun consumeLogs() {
         while (true) {
-            val batch = logMutex.withLock {
-                val items = pendingLogBuffer.toList()
-                pendingLogBuffer.clear()
-                items
+            val batch = ArrayList<FrpLog>(logBatchSize)
+            batch += logChannel.receive()
+            if (batch.size < logBatchSize) {
+                withTimeoutOrNull(logFlushDelayMs) {
+                    while (batch.size < logBatchSize) {
+                        batch += logChannel.receive()
+                    }
+                }
             }
-            if (batch.isEmpty()) return
-            dao.insertLogs(batch.map { it.toEntity() })
+
+            persistLogs(batch)
+        }
+    }
+
+    private suspend fun persistLogs(logs: List<FrpLog>) {
+        val safeLogs = logs.map { log -> log.copy(message = redact(log.message)).toEntity() }
+        logWriteMutex.withLock {
+            dao.insertLogs(safeLogs)
+            logsSinceTrim += logs.size
+            if (logsSinceTrim >= logTrimInterval) {
+                dao.trimLogs(logMaxCount)
+                logsSinceTrim %= logTrimInterval
+            }
         }
     }
 

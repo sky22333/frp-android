@@ -13,6 +13,7 @@ import com.sky22333.frpandroid.core.frp.LanguageMode
 import com.sky22333.frpandroid.core.frp.ThemeMode
 import java.io.File
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
@@ -390,10 +391,53 @@ class FrpRepositoryTest {
         assertEquals(0, dao.logCount())
     }
 
+    @Test
+    fun logChannelKeepsNewestBufferedLogsWhenCapacityIsExceeded() = runTest {
+        val dao = FakeFrpDao(logInsertDelayMs = 1_000)
+        val runtime = FakeRuntime()
+        val repository = repository(
+            dao = dao,
+            runtime = runtime,
+            logBatchSize = 1,
+            logBufferLimit = 3,
+        )
+
+        repository.initialize()
+        repeat(5) { index ->
+            runtime.logSink?.onLog(FrpLog(profile.id, "client", "info", "log-$index", time = index.toLong()))
+        }
+        advanceTimeBy(4_001)
+
+        assertEquals(listOf("log-0", "log-2", "log-3", "log-4"), dao.logMessages())
+    }
+
+    @Test
+    fun persistedLogsAreTrimmedAfterWriteThreshold() = runTest {
+        val dao = FakeFrpDao()
+        val runtime = FakeRuntime()
+        val repository = repository(
+            dao = dao,
+            runtime = runtime,
+            logTrimInterval = 3,
+            logMaxCount = 2,
+        )
+
+        repository.initialize()
+        repeat(3) { index ->
+            runtime.logSink?.onLog(FrpLog(profile.id, "client", "info", "log-$index", time = index.toLong()))
+        }
+
+        assertEquals(listOf("log-1", "log-2"), dao.logMessages())
+    }
+
     private fun TestScope.repository(
         dao: FakeFrpDao,
         runtime: FakeRuntime,
         logFlushDelayMs: Long = 0,
+        logBatchSize: Int = 100,
+        logBufferLimit: Int = 1_000,
+        logTrimInterval: Int = 1_000,
+        logMaxCount: Int = 100_000,
     ): FrpRepository =
         FrpRepository(
             dao = dao,
@@ -402,6 +446,10 @@ class FrpRepositoryTest {
             runtimeManager = runtime,
             scope = kotlinx.coroutines.CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
             logFlushDelayMs = logFlushDelayMs,
+            logBatchSize = logBatchSize,
+            logBufferLimit = logBufferLimit,
+            logTrimInterval = logTrimInterval,
+            logMaxCount = logMaxCount,
         )
 }
 
@@ -478,10 +526,13 @@ private class FakeSettings : SettingsGateway {
     }
 }
 
-private class FakeFrpDao : FrpDao {
+private class FakeFrpDao(
+    private val logInsertDelayMs: Long = 0,
+) : FrpDao {
     private val profiles = linkedMapOf<String, FrpProfileEntity>()
     private val states = linkedMapOf<String, FrpRuntimeStateEntity>()
     private val logs = mutableListOf<FrpLogEntity>()
+    private var nextLogUid = 1L
 
     override fun observeProfiles(): Flow<List<FrpProfileEntity>> = flowOf(profiles.values.toList())
     override suspend fun getProfile(id: String): FrpProfileEntity? = profiles[id]
@@ -511,9 +562,14 @@ private class FakeFrpDao : FrpDao {
     ): Flow<List<FrpLogEntity>> = flowOf(logs.drop(offset).take(limit))
 
     override suspend fun insertLogs(logs: List<FrpLogEntity>) {
-        this.logs += logs.mapIndexed { index, log ->
-            if (log.uid > 0) log else log.copy(uid = this.logs.size + index + 1L)
+        if (logInsertDelayMs > 0) delay(logInsertDelayMs)
+        this.logs += logs.map { log ->
+            if (log.uid > 0) log else log.copy(uid = nextLogUid++)
         }
+    }
+    override suspend fun trimLogs(maxCount: Int) {
+        val retainedIds = logs.sortedByDescending { it.uid }.take(maxCount).map { it.uid }.toSet()
+        logs.removeAll { it.uid !in retainedIds }
     }
     override suspend fun deleteLogsOlderThan(olderThan: Long) {
         logs.removeAll { it.time < olderThan }
@@ -524,4 +580,5 @@ private class FakeFrpDao : FrpDao {
 
     fun runtimeState(id: String): FrpRuntimeStateEntity? = states[id]
     fun logCount(): Int = logs.size
+    fun logMessages(): List<String> = logs.sortedBy { it.uid }.map { it.message }
 }

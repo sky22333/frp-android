@@ -128,6 +128,21 @@ interface FrpDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertLogs(logs: List<FrpLogEntity>)
 
+    @Query(
+        """
+        DELETE FROM logs
+        WHERE uid <= COALESCE(
+            (
+                SELECT uid FROM logs
+                ORDER BY uid DESC
+                LIMIT 1 OFFSET :maxCount
+            ),
+            -1
+        )
+        """,
+    )
+    suspend fun trimLogs(maxCount: Int)
+
     @Query("DELETE FROM logs WHERE time < :olderThan")
     suspend fun deleteLogsOlderThan(olderThan: Long)
 

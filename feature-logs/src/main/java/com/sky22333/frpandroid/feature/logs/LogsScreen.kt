@@ -16,12 +16,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -41,13 +42,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.sky22333.frpandroid.core.data.AppGraph
 import com.sky22333.frpandroid.core.frp.FrpLog
-import com.sky22333.frpandroid.core.ui.FrpListRow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -68,30 +73,64 @@ data class LogsUiState(
     val logs: List<FrpLog> = emptyList(),
 )
 
+private data class LogsTextFilter(val instanceId: String, val keyword: String)
+
+private data class LogsImmediateFilter(
+    val type: String,
+    val level: String,
+    val paused: Boolean,
+)
+
 class LogsViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppGraph.repository(application)
     private val filter = MutableStateFlow(LogsFilter())
     private val frozenLogs = MutableStateFlow<List<FrpLog>>(emptyList())
+    private val latestLogs = MutableStateFlow<List<FrpLog>>(emptyList())
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val uiState: StateFlow<LogsUiState> = filter.flatMapLatest { current ->
-        repository.observeLogs(
-            instanceId = current.instanceId,
-            type = current.type,
-            level = current.level,
-            keyword = current.keyword,
-            limit = 150,
-        ).combine(filter) { logs, latestFilter ->
-            if (!latestFilter.paused) frozenLogs.value = logs
-            LogsUiState(latestFilter, if (latestFilter.paused) frozenLogs.value else logs)
+    @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
+    private val logs = combine(
+        filter
+            .map { LogsTextFilter(it.instanceId, it.keyword) }
+            .distinctUntilChanged()
+            .debounce(300),
+        filter
+            .map { LogsImmediateFilter(it.type, it.level, it.paused) }
+            .distinctUntilChanged(),
+    ) { text, immediate ->
+        LogsFilter(
+            instanceId = text.instanceId,
+            keyword = text.keyword,
+            type = immediate.type,
+            level = immediate.level,
+            paused = immediate.paused,
+        )
+    }.flatMapLatest { current ->
+        if (current.paused) {
+            flowOf(frozenLogs.value)
+        } else {
+            repository.observeLogs(
+                instanceId = current.instanceId,
+                type = current.type,
+                level = current.level,
+                keyword = current.keyword,
+                limit = 150,
+            )
         }
+    }
+
+    val uiState: StateFlow<LogsUiState> = combine(filter, logs) { current, currentLogs ->
+        if (!current.paused) latestLogs.value = currentLogs
+        LogsUiState(current, currentLogs)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LogsUiState())
 
     fun setInstanceId(value: String) = filter.update { it.copy(instanceId = value) }
     fun setKeyword(value: String) = filter.update { it.copy(keyword = value) }
     fun setLevel(value: String) = filter.update { it.copy(level = value) }
     fun setType(value: String) = filter.update { it.copy(type = value) }
-    fun setPaused(value: Boolean) = filter.update { it.copy(paused = value) }
+    fun setPaused(value: Boolean) {
+        if (value) frozenLogs.value = latestLogs.value
+        filter.update { it.copy(paused = value) }
+    }
     fun clearLogs() {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             repository.clearLogs()
@@ -182,21 +221,23 @@ fun LogsScreen(
             }
             LazyColumn(
                 modifier = Modifier.fillMaxWidth().weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 itemsIndexed(
                     state.logs,
                     key = { index, log -> if (log.uid > 0) log.uid else "${log.time}-${log.instanceId}-$index" },
                     contentType = { _, _ -> "log" },
                 ) { _, log ->
-                    FrpListRow(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        icon = Icons.Rounded.BugReport,
-                        title = log.message,
-                        subtitle = "${log.type}/${log.instanceId.ifBlank { "-" }} - ${timeFormatter.format(Date(log.time))}",
-                        status = log.level,
-                        statusRunning = log.level != "error",
-                    )
+                    Column(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                    ) {
+                        Text(text = log.message, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            text = "${log.level.uppercase()} · ${log.type}/${log.instanceId.ifBlank { "-" }} · ${timeFormatter.format(Date(log.time))}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (log.level == "error") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(top = 6.dp))
+                    }
                 }
             }
         }
