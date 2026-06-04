@@ -78,7 +78,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         repository.setAutoRetryEnabled(enabled)
         if (!enabled) FrpRetryWorker.cancelAll(getApplication(), RecoveryReason.AutoRetry)
     }
-    fun setDiagnostics(enabled: Boolean) = viewModelScope.launch { repository.setDiagnosticsSamplingEnabled(enabled) }
     fun setRetention(days: Int) = viewModelScope.launch { repository.setLogRetentionDays(days) }
     fun setTheme(mode: ThemeMode) = viewModelScope.launch { repository.setThemeMode(mode) }
     fun setLanguage(mode: LanguageMode, onChanged: () -> Unit = {}) = viewModelScope.launch {
@@ -215,14 +214,6 @@ fun SettingsScreen(
             }
         }
         item { SectionTitle(stringResource(R.string.settings_diagnostics_section)) }
-        item {
-            ToggleItem(
-                icon = Icons.Rounded.BugReport,
-                title = stringResource(R.string.settings_diagnostics),
-                checked = settings.diagnosticsSamplingEnabled,
-                onChange = viewModel::setDiagnostics,
-            )
-        }
         uiState.diagnostics?.let { diagnostics ->
             item {
                 FrpListRow(

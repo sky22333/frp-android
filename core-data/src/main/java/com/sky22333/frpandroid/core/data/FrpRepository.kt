@@ -295,7 +295,6 @@ class FrpRepository(
     suspend fun setBootStartEnabled(enabled: Boolean) = settingsStore.setBootStartEnabled(enabled)
     suspend fun setNetworkReconnectEnabled(enabled: Boolean) = settingsStore.setNetworkReconnectEnabled(enabled)
     suspend fun setAutoRetryEnabled(enabled: Boolean) = settingsStore.setAutoRetryEnabled(enabled)
-    suspend fun setDiagnosticsSamplingEnabled(enabled: Boolean) = settingsStore.setDiagnosticsSamplingEnabled(enabled)
     suspend fun setLogRetentionDays(days: Int) = settingsStore.setLogRetentionDays(days)
     suspend fun setThemeMode(mode: ThemeMode) = settingsStore.setThemeMode(mode)
     suspend fun setLanguageMode(mode: LanguageMode) = settingsStore.setLanguageMode(mode)
