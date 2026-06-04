@@ -200,8 +200,13 @@ fun LogsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(stringResource(R.string.logs_pause_scroll))
-                    Switch(checked = state.filter.paused, onCheckedChange = viewModel::setPaused)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(stringResource(R.string.logs_pause_scroll))
+                        Switch(checked = state.filter.paused, onCheckedChange = viewModel::setPaused)
+                    }
                     Spacer(Modifier.weight(1f))
                     IconButton(
                         onClick = {
