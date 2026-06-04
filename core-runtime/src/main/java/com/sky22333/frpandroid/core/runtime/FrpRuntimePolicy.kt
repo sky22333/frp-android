@@ -12,6 +12,12 @@ internal object FrpRuntimePolicy {
             !result.isInvalidToml &&
             !result.isInvalidTempDir
 
+    fun shouldHoldScreenOffKeepAlive(enabled: Boolean, screenOff: Boolean, hasActiveInstances: Boolean): Boolean =
+        enabled && screenOff && hasActiveInstances
+
+    fun shouldHoldWifiLock(keepAlive: Boolean, defaultNetworkIsWifi: Boolean): Boolean =
+        keepAlive && defaultNetworkIsWifi
+
     fun retryDelaySeconds(attempt: Int): Long =
         when (attempt.coerceAtLeast(1)) {
             1 -> 10

@@ -15,6 +15,7 @@
     <string name="settings_battery_restricted">电池优化可能限制后台隧道运行</string>
     <string name="settings_network_reconnect">网络恢复后重连</string>
     <string name="settings_auto_retry">失败后自动重试</string>
+    <string name="settings_screen_off_keep_alive">息屏保活增强</string>
     <string name="settings_diagnostics_summary">诊断摘要</string>
     <string name="settings_diagnostics_details">frplib 可用：%1$b\n运行时已初始化：%2$b\n临时目录：%3$s\n运行中：%4$d，失败：%5$d\n待恢复启动：%6$b\n最近错误：%7$s</string>
     <string name="settings_version">版本</string>

@@ -78,6 +78,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         repository.setAutoRetryEnabled(enabled)
         if (!enabled) FrpRetryWorker.cancelAll(getApplication(), RecoveryReason.AutoRetry)
     }
+    fun setScreenOffKeepAlive(enabled: Boolean) = viewModelScope.launch {
+        repository.setScreenOffKeepAliveEnabled(enabled)
+    }
     fun setRetention(days: Int) = viewModelScope.launch { repository.setLogRetentionDays(days) }
     fun setTheme(mode: ThemeMode) = viewModelScope.launch { repository.setThemeMode(mode) }
     fun setLanguage(mode: LanguageMode, onChanged: () -> Unit = {}) = viewModelScope.launch {
@@ -146,6 +149,14 @@ fun SettingsScreen(
                 title = stringResource(R.string.settings_auto_retry),
                 checked = settings.autoRetryEnabled,
                 onChange = viewModel::setAutoRetry,
+            )
+        }
+        item {
+            ToggleItem(
+                icon = Icons.Rounded.PowerSettingsNew,
+                title = stringResource(R.string.settings_screen_off_keep_alive),
+                checked = settings.screenOffKeepAliveEnabled,
+                onChange = viewModel::setScreenOffKeepAlive,
             )
         }
         item {

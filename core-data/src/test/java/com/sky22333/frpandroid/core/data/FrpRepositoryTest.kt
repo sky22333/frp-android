@@ -569,6 +569,9 @@ private class FakeSettings : SettingsGateway {
     override suspend fun setAutoRetryEnabled(enabled: Boolean) {
         mutableSettings.value = mutableSettings.value.copy(autoRetryEnabled = enabled)
     }
+    override suspend fun setScreenOffKeepAliveEnabled(enabled: Boolean) {
+        mutableSettings.value = mutableSettings.value.copy(screenOffKeepAliveEnabled = enabled)
+    }
     override suspend fun setLogRetentionDays(days: Int) {
         mutableSettings.value = mutableSettings.value.copy(logRetentionDays = days)
     }

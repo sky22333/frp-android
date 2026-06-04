@@ -16,6 +16,7 @@ data class FrpSettings(
     val bootStartEnabled: Boolean = false,
     val networkReconnectEnabled: Boolean = true,
     val autoRetryEnabled: Boolean = false,
+    val screenOffKeepAliveEnabled: Boolean = false,
     val logRetentionDays: Int = 7,
     val themeMode: ThemeMode = ThemeMode.System,
     val languageMode: LanguageMode = LanguageMode.System,
@@ -38,6 +39,7 @@ interface SettingsGateway {
     suspend fun setBootStartEnabled(enabled: Boolean)
     suspend fun setNetworkReconnectEnabled(enabled: Boolean)
     suspend fun setAutoRetryEnabled(enabled: Boolean)
+    suspend fun setScreenOffKeepAliveEnabled(enabled: Boolean)
     suspend fun setLogRetentionDays(days: Int)
     suspend fun setThemeMode(mode: ThemeMode)
     suspend fun setLanguageMode(mode: LanguageMode)
@@ -52,6 +54,7 @@ class SettingsStore(private val context: Context) : SettingsGateway {
             bootStartEnabled = preferences[Keys.bootStart] ?: false,
             networkReconnectEnabled = preferences[Keys.networkReconnect] ?: true,
             autoRetryEnabled = preferences[Keys.autoRetry] ?: false,
+            screenOffKeepAliveEnabled = preferences[Keys.screenOffKeepAlive] ?: false,
             logRetentionDays = preferences[Keys.logRetentionDays] ?: 7,
             themeMode = preferences.enumValue(Keys.themeMode, ThemeMode.System),
             languageMode = preferences.enumValue(Keys.languageMode, LanguageMode.System),
@@ -62,6 +65,7 @@ class SettingsStore(private val context: Context) : SettingsGateway {
     override suspend fun setBootStartEnabled(enabled: Boolean) = set(Keys.bootStart, enabled)
     override suspend fun setNetworkReconnectEnabled(enabled: Boolean) = set(Keys.networkReconnect, enabled)
     override suspend fun setAutoRetryEnabled(enabled: Boolean) = set(Keys.autoRetry, enabled)
+    override suspend fun setScreenOffKeepAliveEnabled(enabled: Boolean) = set(Keys.screenOffKeepAlive, enabled)
     override suspend fun setLogRetentionDays(days: Int) = set(Keys.logRetentionDays, days.coerceIn(1, 365))
     override suspend fun setThemeMode(mode: ThemeMode) = set(Keys.themeMode, mode.name)
     override suspend fun setLanguageMode(mode: LanguageMode) = set(Keys.languageMode, mode.name)
@@ -82,6 +86,7 @@ class SettingsStore(private val context: Context) : SettingsGateway {
         val bootStart = booleanPreferencesKey("boot_start")
         val networkReconnect = booleanPreferencesKey("network_reconnect")
         val autoRetry = booleanPreferencesKey("auto_retry")
+        val screenOffKeepAlive = booleanPreferencesKey("screen_off_keep_alive")
         val logRetentionDays = intPreferencesKey("log_retention_days")
         val themeMode = stringPreferencesKey("theme_mode")
         val languageMode = stringPreferencesKey("language_mode")

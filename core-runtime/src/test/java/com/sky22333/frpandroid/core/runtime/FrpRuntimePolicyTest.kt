@@ -55,4 +55,19 @@ class FrpRuntimePolicyTest {
         assertEquals(600L, FrpRuntimePolicy.retryDelaySeconds(6))
         assertEquals(600L, FrpRuntimePolicy.retryDelaySeconds(100))
     }
+
+    @Test
+    fun screenOffKeepAliveRequiresEnabledScreenOffAndActiveInstance() {
+        assertTrue(FrpRuntimePolicy.shouldHoldScreenOffKeepAlive(true, true, true))
+        assertFalse(FrpRuntimePolicy.shouldHoldScreenOffKeepAlive(false, true, true))
+        assertFalse(FrpRuntimePolicy.shouldHoldScreenOffKeepAlive(true, false, true))
+        assertFalse(FrpRuntimePolicy.shouldHoldScreenOffKeepAlive(true, true, false))
+    }
+
+    @Test
+    fun wifiLockRequiresScreenOffKeepAliveAndWifiDefaultNetwork() {
+        assertTrue(FrpRuntimePolicy.shouldHoldWifiLock(keepAlive = true, defaultNetworkIsWifi = true))
+        assertFalse(FrpRuntimePolicy.shouldHoldWifiLock(keepAlive = false, defaultNetworkIsWifi = true))
+        assertFalse(FrpRuntimePolicy.shouldHoldWifiLock(keepAlive = true, defaultNetworkIsWifi = false))
+    }
 }

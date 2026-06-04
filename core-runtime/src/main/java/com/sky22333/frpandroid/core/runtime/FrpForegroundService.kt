@@ -1,16 +1,24 @@
 package com.sky22333.frpandroid.core.runtime
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.Manifest
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -20,16 +28,31 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class FrpForegroundService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val repository by lazy { AppGraph.repository(this) }
+    private val keepAliveLock = Any()
+    @Volatile
+    private var keepAliveMonitoring = false
+    @Volatile
+    private var screenOffKeepAliveEnabled = false
+    @Volatile
+    private var hasActiveInstances = false
+    @Volatile
+    private var screenOff = false
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var wifiLock: WifiManager.WifiLock? = null
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    private var screenReceiver: BroadcastReceiver? = null
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        startScreenOffKeepAliveMonitoring()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -60,6 +83,7 @@ class FrpForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        stopScreenOffKeepAliveMonitoring()
         scope.cancel()
         super.onDestroy()
     }
@@ -156,7 +180,8 @@ class FrpForegroundService : Service() {
     }
 
     private suspend fun refreshNotificationOrStop() {
-        val count = repository.runtimeStates.first().count {
+        val states = repository.runtimeStates.first()
+        val count = states.count {
             it.state == FrpInstanceStatus.Running || it.state == FrpInstanceStatus.Stopping
         }
         if (count <= 0) {
@@ -166,6 +191,144 @@ class FrpForegroundService : Service() {
         }
         val manager = getSystemService(NotificationManager::class.java)
         manager.notify(NOTIFICATION_ID, buildNotification(count))
+    }
+
+    private fun startScreenOffKeepAliveMonitoring() {
+        keepAliveMonitoring = true
+
+        screenReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                when (intent?.action) {
+                    Intent.ACTION_SCREEN_OFF -> screenOff = true
+                    Intent.ACTION_SCREEN_ON -> screenOff = false
+                    else -> return
+                }
+                updateScreenOffKeepAlive()
+            }
+        }.also { receiver ->
+            ContextCompat.registerReceiver(
+                this,
+                receiver,
+                IntentFilter().apply {
+                    addAction(Intent.ACTION_SCREEN_OFF)
+                    addAction(Intent.ACTION_SCREEN_ON)
+                },
+                ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
+        }
+        screenOff = !getSystemService(PowerManager::class.java).isInteractive
+
+        val connectivityManager = getSystemService(ConnectivityManager::class.java)
+        networkCallback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) = updateScreenOffKeepAlive()
+            override fun onLost(network: Network) = updateScreenOffKeepAlive()
+            override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) =
+                updateScreenOffKeepAlive()
+        }.also { callback ->
+            connectivityManager.registerDefaultNetworkCallback(callback)
+        }
+
+        scope.launch {
+            repository.settings.collect { settings ->
+                screenOffKeepAliveEnabled = settings.screenOffKeepAliveEnabled
+                updateScreenOffKeepAlive()
+            }
+        }
+        scope.launch {
+            repository.runtimeStates.collect { states ->
+                hasActiveInstances = states.any {
+                    it.state == FrpInstanceStatus.Running || it.state == FrpInstanceStatus.Stopping
+                }
+                updateScreenOffKeepAlive()
+            }
+        }
+    }
+
+    private fun stopScreenOffKeepAliveMonitoring() {
+        keepAliveMonitoring = false
+        screenReceiver?.let { receiver -> runCatching { unregisterReceiver(receiver) } }
+        screenReceiver = null
+        networkCallback?.let { callback ->
+            runCatching { getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(callback) }
+        }
+        networkCallback = null
+        synchronized(keepAliveLock) {
+            releaseScreenOffKeepAliveLocked()
+        }
+    }
+
+    @SuppressLint("WakelockTimeout")
+    private fun updateScreenOffKeepAlive() {
+        synchronized(keepAliveLock) {
+            if (!keepAliveMonitoring) {
+                releaseScreenOffKeepAliveLocked()
+                return
+            }
+            val shouldKeepAlive = FrpRuntimePolicy.shouldHoldScreenOffKeepAlive(
+                enabled = screenOffKeepAliveEnabled,
+                screenOff = screenOff,
+                hasActiveInstances = hasActiveInstances,
+            )
+            if (shouldKeepAlive) {
+                acquireWakeLockLocked()
+            } else {
+                releaseWakeLockLocked()
+            }
+
+            if (FrpRuntimePolicy.shouldHoldWifiLock(shouldKeepAlive, isDefaultNetworkWifi())) {
+                acquireWifiLockLocked()
+            } else {
+                releaseWifiLockLocked()
+            }
+        }
+    }
+
+    @SuppressLint("WakelockTimeout")
+    private fun acquireWakeLockLocked() {
+        if (wakeLock?.isHeld == true) return
+        wakeLock = getSystemService(PowerManager::class.java)
+            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "$packageName:screen-off-keep-alive")
+            .apply {
+                setReferenceCounted(false)
+                acquire()
+            }
+    }
+
+    @SuppressLint("WakelockTimeout")
+    @Suppress("DEPRECATION")
+    private fun acquireWifiLockLocked() {
+        if (wifiLock?.isHeld == true) return
+        wifiLock = applicationContext.getSystemService(WifiManager::class.java)
+            .createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "$packageName:screen-off-keep-alive")
+            .apply {
+                setReferenceCounted(false)
+                acquire()
+            }
+    }
+
+    private fun releaseScreenOffKeepAliveLocked() {
+        releaseWifiLockLocked()
+        releaseWakeLockLocked()
+    }
+
+    private fun releaseWakeLockLocked() {
+        wakeLock?.let { lock ->
+            if (lock.isHeld) lock.release()
+        }
+        wakeLock = null
+    }
+
+    private fun releaseWifiLockLocked() {
+        wifiLock?.let { lock ->
+            if (lock.isHeld) lock.release()
+        }
+        wifiLock = null
+    }
+
+    private fun isDefaultNetworkWifi(): Boolean {
+        val manager = getSystemService(ConnectivityManager::class.java)
+        val network = manager.activeNetwork ?: return false
+        return manager.getNetworkCapabilities(network)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
     }
 
     private fun buildNotification(runningCount: Int): Notification {

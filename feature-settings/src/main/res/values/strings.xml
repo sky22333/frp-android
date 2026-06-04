@@ -15,6 +15,7 @@
     <string name="settings_battery_restricted">Battery optimization may restrict background tunnels</string>
     <string name="settings_network_reconnect">Reconnect after network recovery</string>
     <string name="settings_auto_retry">Auto retry after failure</string>
+    <string name="settings_screen_off_keep_alive">Enhanced screen-off keep alive</string>
     <string name="settings_diagnostics_summary">Diagnostics summary</string>
     <string name="settings_diagnostics_details">frplib available: %1$b\nruntime initialized: %2$b\ntemp dir: %3$s\nrunning: %4$d, failed: %5$d\npending start: %6$b\nlast error: %7$s</string>
     <string name="settings_version">Version</string>
