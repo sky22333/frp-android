@@ -43,6 +43,7 @@ import androidx.lifecycle.viewModelScope
 import com.sky22333.frpandroid.core.data.AppGraph
 import com.sky22333.frpandroid.core.frp.FrpProfile
 import com.sky22333.frpandroid.core.frp.FrpType
+import com.sky22333.frpandroid.core.runtime.FrpRetryWorker
 import com.sky22333.frpandroid.core.ui.ErrorText
 import com.sky22333.frpandroid.core.ui.FrpListRow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -90,6 +91,7 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
         mutableError.value = null
         viewModelScope.launch {
             try {
+                FrpRetryWorker.cancel(appContext, profile.id)
                 val result = repository.deleteProfile(profile.id)
                 if (!result.isSuccess) {
                     mutableError.value = result.message

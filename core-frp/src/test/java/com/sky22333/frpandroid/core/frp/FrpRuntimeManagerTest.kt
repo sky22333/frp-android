@@ -2,6 +2,7 @@ package com.sky22333.frpandroid.core.frp
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class FrpRuntimeManagerTest {
@@ -44,5 +45,12 @@ class FrpRuntimeManagerTest {
     fun ignoresUnknownLine() {
         assertNull(manager.parseInstanceLine("bad-data"))
         assertNull(manager.parseInstanceLine("proxy:id:running"))
+    }
+
+    @Test
+    fun rejectsPartiallyUnparseableInstanceList() {
+        val result = manager.parseInstances("client:nas-web:running\nbad-data")
+
+        assertTrue(result is FrpRuntimeQueryResult.Failure)
     }
 }

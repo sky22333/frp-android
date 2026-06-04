@@ -17,7 +17,7 @@ interface FrpRuntimeGateway {
     suspend fun reload(profile: FrpProfile): FrpResult
     suspend fun stop(id: String, type: FrpType): FrpResult
     suspend fun stopAll(): FrpResult
-    suspend fun listInstances(): List<FrpRuntimeState>
+    suspend fun listInstances(): FrpRuntimeQueryResult
 }
 
 class FrpRuntimeManager(
@@ -83,11 +83,22 @@ class FrpRuntimeManager(
         FrpResult.fromRaw(bridge.stopAll())
     }
 
-    override suspend fun listInstances(): List<FrpRuntimeState> = withContext(ioDispatcher) {
-        bridge.listInstances()
-            .lineSequence()
-            .mapNotNull { line -> parseInstanceLine(line) }
-            .toList()
+    override suspend fun listInstances(): FrpRuntimeQueryResult = withContext(ioDispatcher) {
+        when (val result = bridge.listInstances()) {
+            is BridgeCallResult.Failure -> FrpRuntimeQueryResult.Failure(result.message)
+            is BridgeCallResult.Success -> parseInstances(result.value)
+        }
+    }
+
+    internal fun parseInstances(raw: String): FrpRuntimeQueryResult {
+        if (raw.isBlank()) return FrpRuntimeQueryResult.Success(emptyList())
+        val lines = raw.lineSequence().filter { it.isNotBlank() }.toList()
+        val states = lines.mapNotNull { line -> parseInstanceLine(line) }
+        return if (states.size == lines.size) {
+            FrpRuntimeQueryResult.Success(states)
+        } else {
+            FrpRuntimeQueryResult.Failure("FRPLIB_INVALID_RESPONSE: listInstances returned unparseable data")
+        }
     }
 
     internal fun parseInstanceLine(line: String): FrpRuntimeState? {

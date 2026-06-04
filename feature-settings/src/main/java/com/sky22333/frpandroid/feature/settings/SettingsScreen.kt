@@ -47,6 +47,8 @@ import com.sky22333.frpandroid.core.data.FrpSettings
 import com.sky22333.frpandroid.core.frp.LanguageMode
 import com.sky22333.frpandroid.core.frp.ThemeMode
 import com.sky22333.frpandroid.core.runtime.FrpForegroundService
+import com.sky22333.frpandroid.core.runtime.FrpRetryWorker
+import com.sky22333.frpandroid.core.runtime.RecoveryReason
 import com.sky22333.frpandroid.core.ui.FrpListRow
 import com.sky22333.frpandroid.core.ui.SectionTitle
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -68,8 +70,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FrpSettings())
 
     fun setBootStart(enabled: Boolean) = viewModelScope.launch { repository.setBootStartEnabled(enabled) }
-    fun setNetworkReconnect(enabled: Boolean) = viewModelScope.launch { repository.setNetworkReconnectEnabled(enabled) }
-    fun setAutoRetry(enabled: Boolean) = viewModelScope.launch { repository.setAutoRetryEnabled(enabled) }
+    fun setNetworkReconnect(enabled: Boolean) = viewModelScope.launch {
+        repository.setNetworkReconnectEnabled(enabled)
+        if (!enabled) FrpRetryWorker.cancelAll(getApplication(), RecoveryReason.Network)
+    }
+    fun setAutoRetry(enabled: Boolean) = viewModelScope.launch {
+        repository.setAutoRetryEnabled(enabled)
+        if (!enabled) FrpRetryWorker.cancelAll(getApplication(), RecoveryReason.AutoRetry)
+    }
     fun setDiagnostics(enabled: Boolean) = viewModelScope.launch { repository.setDiagnosticsSamplingEnabled(enabled) }
     fun setRetention(days: Int) = viewModelScope.launch { repository.setLogRetentionDays(days) }
     fun setTheme(mode: ThemeMode) = viewModelScope.launch { repository.setThemeMode(mode) }

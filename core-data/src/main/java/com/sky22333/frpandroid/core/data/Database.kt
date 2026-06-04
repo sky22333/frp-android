@@ -105,9 +105,6 @@ interface FrpDao {
     @Query("DELETE FROM runtime_states WHERE id = :id")
     suspend fun deleteRuntimeState(id: String)
 
-    @Query("DELETE FROM runtime_states")
-    suspend fun clearRuntimeStates()
-
     @Query(
         """
         SELECT * FROM logs

@@ -13,6 +13,7 @@ android {
 dependencies {
     implementation(project(":core-frp"))
     implementation(project(":core-data"))
+    implementation(project(":core-runtime"))
     implementation(project(":core-ui"))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

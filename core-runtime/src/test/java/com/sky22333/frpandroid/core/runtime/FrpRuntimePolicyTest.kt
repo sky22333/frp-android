@@ -2,6 +2,7 @@ package com.sky22333.frpandroid.core.runtime
 
 import com.sky22333.frpandroid.core.frp.FrpResult
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -45,5 +46,13 @@ class FrpRuntimePolicyTest {
         assertFalse(FrpRuntimePolicy.isStartSatisfied(result))
         assertTrue(FrpRuntimePolicy.shouldRetryStart(result, autoRetryEnabled = true))
         assertFalse(FrpRuntimePolicy.shouldRetryStart(result, autoRetryEnabled = false))
+    }
+
+    @Test
+    fun retryDelayGrowsAndCapsAtTenMinutes() {
+        assertEquals(10L, FrpRuntimePolicy.retryDelaySeconds(1))
+        assertEquals(30L, FrpRuntimePolicy.retryDelaySeconds(2))
+        assertEquals(600L, FrpRuntimePolicy.retryDelaySeconds(6))
+        assertEquals(600L, FrpRuntimePolicy.retryDelaySeconds(100))
     }
 }

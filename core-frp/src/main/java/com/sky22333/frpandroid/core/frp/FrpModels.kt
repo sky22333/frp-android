@@ -28,6 +28,11 @@ data class FrpRuntimeState(
     val lastError: String?,
 )
 
+sealed interface FrpRuntimeQueryResult {
+    data class Success(val states: List<FrpRuntimeState>) : FrpRuntimeQueryResult
+    data class Failure(val message: String) : FrpRuntimeQueryResult
+}
+
 data class FrpLog(
     val instanceId: String,
     val type: String,

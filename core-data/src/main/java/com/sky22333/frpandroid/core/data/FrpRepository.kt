@@ -7,6 +7,7 @@ import com.sky22333.frpandroid.core.frp.FrpProfile
 import com.sky22333.frpandroid.core.frp.FrpResult
 import com.sky22333.frpandroid.core.frp.FrpRuntimeGateway
 import com.sky22333.frpandroid.core.frp.FrpRuntimeManager
+import com.sky22333.frpandroid.core.frp.FrpRuntimeQueryResult
 import com.sky22333.frpandroid.core.frp.FrpRuntimeState
 import com.sky22333.frpandroid.core.frp.FrpType
 import com.sky22333.frpandroid.core.frp.LanguageMode
@@ -80,17 +81,17 @@ class FrpRepository(
     }
 
     suspend fun deleteProfile(id: String): FrpResult {
-        val profile = dao.getProfile(id)?.toModel()
-        if (profile != null) {
+        return runtimeOperationMutex.withLock {
+            val profile = dao.getProfile(id)?.toModel()
             val state = dao.getRuntimeStates().firstOrNull { it.id == id }?.state
-            if (state == FrpInstanceStatus.Running || state == FrpInstanceStatus.Stopping || state == FrpInstanceStatus.Failed) {
-                val stopResult = stop(profile)
-                if (!stopResult.isSuccess) return stopResult
+            if (profile != null && (state.isRecoverable() || state == FrpInstanceStatus.Stopping)) {
+                val stopResult = stopLocked(profile)
+                if (!stopResult.isSuccess) return@withLock stopResult
             }
+            dao.deleteProfile(id)
+            dao.deleteRuntimeState(id)
+            FrpResult(code = null, message = "")
         }
-        dao.deleteProfile(id)
-        dao.deleteRuntimeState(id)
-        return FrpResult(code = null, message = "")
     }
 
     suspend fun getProfile(id: String): FrpProfile? = dao.getProfile(id)?.toModel()
@@ -100,7 +101,7 @@ class FrpRepository(
 
     suspend fun getNetworkRecoverableProfiles(): List<FrpProfile> {
         val states = dao.getRuntimeStates()
-            .filter { it.state == FrpInstanceStatus.Running || it.state == FrpInstanceStatus.Failed }
+            .filter { it.state.isRecoverable() }
             .associateBy { it.id }
         if (states.isEmpty()) return emptyList()
         return states.keys.mapNotNull { id -> dao.getProfile(id)?.toModel() }
@@ -135,46 +136,26 @@ class FrpRepository(
 
     suspend fun start(profile: FrpProfile): FrpResult {
         val result = runtimeOperationMutex.withLock {
-            val ready = ensureRuntimeReady()
-            if (ready.isSuccess) runtimeManager.start(profile) else ready
-        }
-        when {
-            result.isSuccess || result.isAlreadyRunning -> {
-                dao.upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null).toEntity())
-            }
-            result.isInvalidToml -> {
-                val current = dao.getRuntimeStates().firstOrNull { it.id == profile.id }
-                if (current == null) {
-                    dao.upsertRuntimeState(
-                        FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Stopped, result.message).toEntity(),
-                    )
-                }
-            }
-            else -> {
-                dao.upsertRuntimeState(
-                    FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Failed, result.message.ifBlank { null }).toEntity(),
-                )
-            }
+            startLocked(profile)
         }
         appendLifecycleLog(profile.id, profile.type, result, "start")
         return result
     }
 
+    suspend fun recoverProfile(id: String): FrpResult? {
+        val recovered = runtimeOperationMutex.withLock {
+            val profile = dao.getProfile(id)?.toModel() ?: return@withLock null
+            val state = dao.getRuntimeStates().firstOrNull { it.id == id }?.state
+            if (!state.isRecoverable()) return@withLock null
+            profile to startLocked(profile)
+        } ?: return null
+        appendLifecycleLog(recovered.first.id, recovered.first.type, recovered.second, "recover")
+        return recovered.second
+    }
+
     suspend fun reload(profile: FrpProfile): FrpResult {
         val result = runtimeOperationMutex.withLock {
-            val ready = ensureRuntimeReady()
-            if (ready.isSuccess) runtimeManager.reload(profile) else ready
-        }
-        when {
-            result.isSuccess || result.isAlreadyRunning -> {
-                dao.upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null).toEntity())
-            }
-            result.isInvalidToml -> Unit
-            else -> {
-                dao.upsertRuntimeState(
-                    FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Failed, result.message.ifBlank { null }).toEntity(),
-                )
-            }
+            reloadLocked(profile)
         }
         appendLifecycleLog(profile.id, profile.type, result, "reload")
         return result
@@ -201,10 +182,7 @@ class FrpRepository(
 
     suspend fun stop(profile: FrpProfile): FrpResult {
         val result = runtimeOperationMutex.withLock {
-            dao.upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Stopping, null).toEntity())
-            runtimeManager.stop(profile.id, profile.type).also {
-                syncRuntimeStatesFromNative()
-            }
+            stopLocked(profile)
         }
         appendLifecycleLog(profile.id, profile.type, result, "stop")
         return result
@@ -234,7 +212,12 @@ class FrpRepository(
     }
 
     private suspend fun syncRuntimeStatesFromNative(): List<FrpRuntimeState> {
-        val states = runtimeManager.listInstances()
+        val query = runtimeManager.listInstances()
+        if (query is FrpRuntimeQueryResult.Failure) {
+            appendLog(FrpLog("", "frp", "error", query.message, System.currentTimeMillis()))
+            return emptyList()
+        }
+        val states = (query as FrpRuntimeQueryResult.Success).states
         val nativeIds = states.map { it.id }.toSet()
         dao.getRuntimeStates()
             .filter { it.id !in nativeIds && it.state != FrpInstanceStatus.Stopped }
@@ -245,6 +228,54 @@ class FrpRepository(
             }
         states.forEach { dao.upsertRuntimeState(it.toEntity()) }
         return states
+    }
+
+    private suspend fun startLocked(profile: FrpProfile): FrpResult {
+        val ready = ensureRuntimeReady()
+        val result = if (ready.isSuccess) runtimeManager.start(profile) else ready
+        when {
+            result.isSuccess || result.isAlreadyRunning -> {
+                dao.upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null).toEntity())
+            }
+            result.isInvalidToml -> {
+                val current = dao.getRuntimeStates().firstOrNull { it.id == profile.id }
+                if (current == null) {
+                    dao.upsertRuntimeState(
+                        FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Stopped, result.message).toEntity(),
+                    )
+                }
+            }
+            else -> {
+                dao.upsertRuntimeState(
+                    FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Failed, result.message.ifBlank { null }).toEntity(),
+                )
+            }
+        }
+        return result
+    }
+
+    private suspend fun stopLocked(profile: FrpProfile): FrpResult {
+        dao.upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Stopping, null).toEntity())
+        return runtimeManager.stop(profile.id, profile.type).also {
+            syncRuntimeStatesFromNative()
+        }
+    }
+
+    private suspend fun reloadLocked(profile: FrpProfile): FrpResult {
+        val ready = ensureRuntimeReady()
+        val result = if (ready.isSuccess) runtimeManager.reload(profile) else ready
+        when {
+            result.isSuccess || result.isAlreadyRunning -> {
+                dao.upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null).toEntity())
+            }
+            result.isInvalidToml -> Unit
+            else -> {
+                dao.upsertRuntimeState(
+                    FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Failed, result.message.ifBlank { null }).toEntity(),
+                )
+            }
+        }
+        return result
     }
 
     suspend fun pruneLogs(retentionDays: Int) {
@@ -325,4 +356,7 @@ class FrpRepository(
         message
             .replace(Regex("(?i)(token|password|secret|authorization)\\s*=\\s*[^\\s,;]+"), "\$1=***")
             .replace(Regex("(?i)(token|password|secret|authorization):\\s*[^\\s,;]+"), "\$1: ***")
+
+    private fun FrpInstanceStatus?.isRecoverable(): Boolean =
+        this == FrpInstanceStatus.Running || this == FrpInstanceStatus.Failed
 }

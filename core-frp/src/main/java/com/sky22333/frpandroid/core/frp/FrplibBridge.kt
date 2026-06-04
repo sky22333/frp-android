@@ -23,7 +23,7 @@ class FrplibBridge {
     fun stopClient(id: String): String = invokeString("stopClientWithID", id)
     fun stopServer(id: String): String = invokeString("stopServerWithID", id)
     fun stopAll(): String = invokeString("stopAll")
-    fun listInstances(): String = invokeString("listInstances")
+    fun listInstances(): BridgeCallResult = invoke("listInstances")
 
     fun setLogCallback(sink: FrpLogSink) {
         val target = frplibClass() ?: return
@@ -53,12 +53,19 @@ class FrplibBridge {
     }
 
     private fun invokeString(name: String, vararg args: String): String {
-        val target = frplibClass() ?: return "FRPLIB_MISSING: frplib AAR is not available"
+        return when (val result = invoke(name, *args)) {
+            is BridgeCallResult.Success -> result.value
+            is BridgeCallResult.Failure -> result.message
+        }
+    }
+
+    private fun invoke(name: String, vararg args: String): BridgeCallResult {
+        val target = frplibClass() ?: return BridgeCallResult.Failure("FRPLIB_MISSING: frplib AAR is not available")
         return runCatching {
             val types = Array(args.size) { String::class.java }
-            target.getMethod(name, *types).invoke(null, *args) as? String ?: ""
+            BridgeCallResult.Success(target.getMethod(name, *types).invoke(null, *args) as? String ?: "")
         }.getOrElse { error ->
-            "FRPLIB_CALL_FAILED: ${error.message.orEmpty()}"
+            BridgeCallResult.Failure("FRPLIB_CALL_FAILED: ${error.message.orEmpty()}")
         }
     }
 
@@ -67,4 +74,9 @@ class FrplibBridge {
             Class.forName("io.github.sky22333.frplib.Frplib")
         }.getOrNull()?.also { cachedFrplibClass = it }
 
+}
+
+sealed interface BridgeCallResult {
+    data class Success(val value: String) : BridgeCallResult
+    data class Failure(val message: String) : BridgeCallResult
 }

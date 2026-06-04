@@ -1,6 +1,5 @@
 package com.sky22333.frpandroid.core.ui
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,10 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Error
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -41,62 +37,6 @@ fun SectionTitle(
     ) {
         Text(text = title, style = MaterialTheme.typography.titleLarge)
         if (action != null) action()
-    }
-}
-
-@Composable
-fun StatusChip(
-    text: String,
-    running: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    AssistChip(
-        modifier = modifier,
-        onClick = {},
-        label = { Text(text) },
-        leadingIcon = {
-            Icon(
-                imageVector = if (running) Icons.Rounded.CheckCircle else Icons.Rounded.Info,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-            )
-        },
-    )
-}
-
-@Composable
-fun InfoCard(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    modifier: Modifier = Modifier,
-    trailing: @Composable (() -> Unit)? = null,
-) {
-    Card(
-        modifier = modifier.animateContentSize(),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(32.dp),
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(4.dp))
-                Text(text = subtitle, style = MaterialTheme.typography.bodyMedium)
-            }
-            if (trailing != null) trailing()
-        }
     }
 }
 

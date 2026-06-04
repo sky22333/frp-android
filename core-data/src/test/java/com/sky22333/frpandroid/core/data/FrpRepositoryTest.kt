@@ -6,6 +6,7 @@ import com.sky22333.frpandroid.core.frp.FrpLogSink
 import com.sky22333.frpandroid.core.frp.FrpProfile
 import com.sky22333.frpandroid.core.frp.FrpResult
 import com.sky22333.frpandroid.core.frp.FrpRuntimeGateway
+import com.sky22333.frpandroid.core.frp.FrpRuntimeQueryResult
 import com.sky22333.frpandroid.core.frp.FrpRuntimeState
 import com.sky22333.frpandroid.core.frp.FrpType
 import com.sky22333.frpandroid.core.frp.LanguageMode
@@ -306,6 +307,51 @@ class FrpRepositoryTest {
     }
 
     @Test
+    fun syncRuntimeStatesKeepsExistingStateWhenNativeQueryFails() = runTest {
+        val dao = FakeFrpDao().apply {
+            upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null).toEntity())
+        }
+        val runtime = FakeRuntime(
+            listInstancesQueryResult = FrpRuntimeQueryResult.Failure("FRPLIB_CALL_FAILED: unavailable"),
+        )
+        val repository = repository(dao, runtime)
+
+        repository.syncRuntimeStates()
+
+        assertEquals(FrpInstanceStatus.Running, dao.runtimeState(profile.id)?.state)
+    }
+
+    @Test
+    fun recoverProfileDoesNotStartStoppedProfile() = runTest {
+        val dao = FakeFrpDao().apply {
+            upsertProfile(profile.toEntity())
+            upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Stopped, null).toEntity())
+        }
+        val runtime = FakeRuntime()
+        val repository = repository(dao, runtime)
+
+        val result = repository.recoverProfile(profile.id)
+
+        assertNull(result)
+        assertEquals(0, runtime.startCalls)
+    }
+
+    @Test
+    fun recoverProfileStartsRunningProfile() = runTest {
+        val dao = FakeFrpDao().apply {
+            upsertProfile(profile.toEntity())
+            upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null).toEntity())
+        }
+        val runtime = FakeRuntime()
+        val repository = repository(dao, runtime)
+
+        val result = repository.recoverProfile(profile.id)
+
+        assertTrue(result?.isSuccess == true)
+        assertEquals(1, runtime.startCalls)
+    }
+
+    @Test
     fun networkRecoveryDoesNotRestartStoppingProfiles() = runTest {
         val dao = FakeFrpDao().apply {
             upsertProfile(profile.toEntity())
@@ -367,6 +413,7 @@ private class FakeRuntime(
     var stopResult: FrpResult = FrpResult(code = null, message = ""),
     var stopAllResult: FrpResult = FrpResult(code = null, message = ""),
     var listInstancesResult: List<FrpRuntimeState> = emptyList(),
+    var listInstancesQueryResult: FrpRuntimeQueryResult? = null,
 ) : FrpRuntimeGateway {
     var startCalls = 0
     var reloadCalls = 0
@@ -398,9 +445,9 @@ private class FakeRuntime(
         stopAllCalls += 1
         return stopAllResult
     }
-    override suspend fun listInstances(): List<FrpRuntimeState> {
+    override suspend fun listInstances(): FrpRuntimeQueryResult {
         listInstancesCalls += 1
-        return listInstancesResult
+        return listInstancesQueryResult ?: FrpRuntimeQueryResult.Success(listInstancesResult)
     }
 }
 
@@ -457,10 +504,6 @@ private class FakeFrpDao : FrpDao {
     override suspend fun deleteRuntimeState(id: String) {
         states.remove(id)
     }
-    override suspend fun clearRuntimeStates() {
-        states.clear()
-    }
-
     override fun observeLogs(
         instanceId: String?,
         type: String?,
