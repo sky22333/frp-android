@@ -6,6 +6,8 @@
 
 ## 功能特点
 
+✅ Supports Chinese and English
+
 ✅ 支持 FRPC / FRPS 配置管理
 
 ✅ 支持启动、停止、重启实例
