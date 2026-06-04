@@ -50,6 +50,7 @@ data class FrpResult(
     val isAlreadyRunning: Boolean = code == "ALREADY_RUNNING"
     val isInvalidTempDir: Boolean = code == "INVALID_TEMP_DIR"
     val isInvalidToml: Boolean = code == "INVALID_TOML"
+    val isTlsFileMissing: Boolean = code == "TLS_FILE_MISSING"
     val isAlreadyStopped: Boolean =
         code == "STOP_FAILED" &&
             message.contains(Regex("(?i)(not running|already stopped|not found|no such instance)"))

@@ -25,13 +25,16 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
+import java.io.InputStream
 
 class FrpRepository(
     private val dao: FrpDao,
     private val settingsStore: SettingsGateway,
     private val appCacheDir: File,
+    private val appFilesDir: File,
     private val runtimeManager: FrpRuntimeGateway = FrpRuntimeManager(),
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
     private val logFlushDelayMs: Long = 750,
@@ -105,11 +108,38 @@ class FrpRepository(
             }
             dao.deleteProfile(id)
             dao.deleteRuntimeState(id)
+            withContext(Dispatchers.IO) { deleteTlsFiles(id) }
             FrpResult(code = null, message = "")
         }
     }
 
     suspend fun getProfile(id: String): FrpProfile? = dao.getProfile(id)?.toModel()
+
+    fun getTlsFiles(profileId: String): List<TlsFileInfo> =
+        TlsFileRole.entries.mapNotNull { role ->
+            val file = tlsFile(profileId, role)
+            if (file.isFile) TlsFileInfo(role, file.name, file.absolutePath) else null
+        }
+
+    fun importTlsFile(profileId: String, role: TlsFileRole, input: InputStream): TlsFileInfo {
+        val target = tlsFile(profileId, role)
+        target.parentFile?.mkdirs()
+        val temporary = File(target.parentFile, "${target.name}.tmp")
+        try {
+            input.use { source ->
+                temporary.outputStream().use { output -> source.copyTo(output) }
+            }
+            if (!temporary.renameTo(target)) {
+                temporary.copyTo(target, overwrite = true)
+            }
+        } finally {
+            temporary.delete()
+        }
+        return TlsFileInfo(role, target.name, target.absolutePath)
+    }
+
+    fun deleteTlsFile(profileId: String, role: TlsFileRole): Boolean =
+        tlsFile(profileId, role).let { file -> !file.exists() || file.delete() }
 
     suspend fun getAutoStartProfiles(): List<FrpProfile> =
         dao.getAutoStartProfiles().map { it.toModel() }
@@ -247,12 +277,13 @@ class FrpRepository(
 
     private suspend fun startLocked(profile: FrpProfile): FrpResult {
         val ready = ensureRuntimeReady()
-        val result = if (ready.isSuccess) runtimeManager.start(profile) else ready
+        val tlsFilesReady = if (ready.isSuccess) validateManagedTlsFiles(profile) else ready
+        val result = if (tlsFilesReady.isSuccess) runtimeManager.start(profile) else tlsFilesReady
         when {
             result.isSuccess || result.isAlreadyRunning -> {
                 dao.upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null).toEntity())
             }
-            result.isInvalidToml -> {
+            result.isInvalidToml || result.isTlsFileMissing -> {
                 val current = dao.getRuntimeStates().firstOrNull { it.id == profile.id }
                 if (current == null) {
                     dao.upsertRuntimeState(
@@ -278,12 +309,13 @@ class FrpRepository(
 
     private suspend fun reloadLocked(profile: FrpProfile): FrpResult {
         val ready = ensureRuntimeReady()
-        val result = if (ready.isSuccess) runtimeManager.reload(profile) else ready
+        val tlsFilesReady = if (ready.isSuccess) validateManagedTlsFiles(profile) else ready
+        val result = if (tlsFilesReady.isSuccess) runtimeManager.reload(profile) else tlsFilesReady
         when {
             result.isSuccess || result.isAlreadyRunning -> {
                 dao.upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null).toEntity())
             }
-            result.isInvalidToml -> Unit
+            result.isInvalidToml || result.isTlsFileMissing -> Unit
             else -> {
                 dao.upsertRuntimeState(
                     FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Failed, result.message.ifBlank { null }).toEntity(),
@@ -388,6 +420,34 @@ class FrpRepository(
         message
             .replace(Regex("(?i)(token|password|secret|authorization)\\s*=\\s*[^\\s,;]+"), "\$1=***")
             .replace(Regex("(?i)(token|password|secret|authorization):\\s*[^\\s,;]+"), "\$1: ***")
+
+    private fun validateManagedTlsFiles(profile: FrpProfile): FrpResult {
+        val managedDirectory = tlsDirectory(profile.id).canonicalFile
+        val missing = runtimeManager.tlsFilePaths(profile.toml)
+            .firstOrNull { path ->
+                val file = runCatching { File(path).canonicalFile }.getOrNull() ?: return@firstOrNull false
+                file.path.startsWith(managedDirectory.path + File.separator) && !file.isFile
+            }
+        return if (missing == null) {
+            FrpResult(code = null, message = "")
+        } else {
+            FrpResult(code = "TLS_FILE_MISSING", message = "TLS_FILE_MISSING: $missing")
+        }
+    }
+
+    private fun deleteTlsFiles(profileId: String) {
+        tlsDirectory(profileId).deleteRecursively()
+    }
+
+    private fun tlsFile(profileId: String, role: TlsFileRole): File =
+        File(tlsDirectory(profileId), role.fileName)
+
+    private fun tlsDirectory(profileId: String): File {
+        val root = File(appFilesDir, "certificates").canonicalFile
+        val directory = File(root, profileId).canonicalFile
+        require(directory.path.startsWith(root.path + File.separator)) { "Invalid profile ID" }
+        return directory
+    }
 
     private fun FrpInstanceStatus?.isRecoverable(): Boolean =
         this == FrpInstanceStatus.Running || this == FrpInstanceStatus.Failed

@@ -11,4 +11,14 @@ class TomlValidator {
         }
         return FrpResult(code = "INVALID_TOML", message = message)
     }
+
+    fun tlsFilePaths(toml: String): List<String> {
+        val result = Toml.parse(toml)
+        if (result.hasErrors()) return emptyList()
+        return listOf(
+            "transport.tls.trustedCaFile",
+            "transport.tls.certFile",
+            "transport.tls.keyFile",
+        ).mapNotNull { key -> result.getString(key)?.ifBlank { null } }
+    }
 }

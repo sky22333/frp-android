@@ -6,4 +6,21 @@
     <string name="editor_save_restart">Save and restart</string>
     <string name="editor_valid">TOML is valid</string>
     <string name="editor_profile_missing">Profile not found</string>
+    <string name="editor_tls_files">TLS files</string>
+    <string name="editor_tls_import">Import TLS file</string>
+    <string name="editor_tls_empty">No TLS files imported</string>
+    <string name="editor_tls_choose_role">Choose file purpose</string>
+    <string name="editor_tls_trusted_ca">Trusted CA</string>
+    <string name="editor_tls_certificate">Local certificate</string>
+    <string name="editor_tls_private_key">Local private key</string>
+    <string name="editor_tls_copy_path">Copy path</string>
+    <string name="editor_tls_delete">Delete file</string>
+    <string name="editor_tls_close">Close</string>
+    <string name="editor_tls_imported">TLS file imported, path copied</string>
+    <string name="editor_tls_open_failed">Unable to open selected file</string>
+    <string name="editor_tls_deleted">TLS file deleted; remove its path from TOML</string>
+    <string name="editor_tls_delete_failed">Unable to delete TLS file</string>
+    <string name="editor_tls_path_copied">TLS file path copied</string>
+    <string name="editor_tls_delete_private_key">Delete private key?</string>
+    <string name="editor_tls_delete_private_key_message">The private key file will be permanently deleted.</string>
 </resources>

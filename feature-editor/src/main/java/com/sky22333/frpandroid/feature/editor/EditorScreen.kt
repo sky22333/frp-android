@@ -2,46 +2,72 @@ package com.sky22333.frpandroid.feature.editor
 
 import android.Manifest
 import android.app.Application
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Badge
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.FileOpen
+import androidx.compose.material.icons.rounded.Key
+import androidx.compose.material.icons.rounded.Security
+import androidx.compose.material.icons.rounded.VerifiedUser
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.size
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.sky22333.frpandroid.core.data.AppGraph
+import com.sky22333.frpandroid.core.data.TlsFileInfo
+import com.sky22333.frpandroid.core.data.TlsFileRole
 import com.sky22333.frpandroid.core.frp.FrpProfile
 import com.sky22333.frpandroid.core.runtime.FrpForegroundService
 import com.sky22333.frpandroid.core.ui.ErrorText
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class EditorUiState(
     val profile: FrpProfile? = null,
@@ -50,6 +76,9 @@ data class EditorUiState(
     val validationMessage: String? = null,
     val validationError: Boolean = false,
     val isBusy: Boolean = false,
+    val tlsFiles: List<TlsFileInfo> = emptyList(),
+    val tlsMessage: String? = null,
+    val tlsPathToCopy: String? = null,
 )
 
 class EditorViewModel(application: Application) : AndroidViewModel(application) {
@@ -59,11 +88,15 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
 
     fun load(profileId: String) {
         viewModelScope.launch {
-            val profile = repository.getProfile(profileId)
+            val profile = withContext(Dispatchers.IO) { repository.getProfile(profileId) }
+            val tlsFiles = withContext(Dispatchers.IO) {
+                profile?.let { repository.getTlsFiles(it.id) }.orEmpty()
+            }
             mutableState.value = EditorUiState(
                 profile = profile,
                 name = profile?.name.orEmpty(),
                 toml = profile?.toml.orEmpty(),
+                tlsFiles = tlsFiles,
             )
         }
     }
@@ -132,6 +165,47 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
     }
+
+    fun importTlsFile(uri: Uri, role: TlsFileRole, successMessage: String, openFailedMessage: String) {
+        val profile = mutableState.value.profile ?: return
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    getApplication<Application>().contentResolver.openInputStream(uri)?.let { input ->
+                        repository.importTlsFile(profile.id, role, input)
+                    } ?: error(openFailedMessage)
+                }
+            }
+            val tlsFiles = withContext(Dispatchers.IO) { repository.getTlsFiles(profile.id) }
+            mutableState.update {
+                it.copy(
+                    tlsFiles = tlsFiles,
+                    tlsMessage = result.fold(
+                        onSuccess = { successMessage },
+                        onFailure = { error -> error.message ?: openFailedMessage },
+                    ),
+                    tlsPathToCopy = result.getOrNull()?.path,
+                )
+            }
+        }
+    }
+
+    fun deleteTlsFile(role: TlsFileRole, successMessage: String, failureMessage: String) {
+        val profile = mutableState.value.profile ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            val deleted = repository.deleteTlsFile(profile.id, role)
+            mutableState.update {
+                it.copy(
+                    tlsFiles = repository.getTlsFiles(profile.id),
+                    tlsMessage = if (deleted) successMessage else failureMessage,
+                )
+            }
+        }
+    }
+
+    fun consumeTlsMessage() {
+        mutableState.update { it.copy(tlsMessage = null, tlsPathToCopy = null) }
+    }
 }
 
 @Composable
@@ -142,7 +216,17 @@ fun EditorScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val validText = stringResource(R.string.editor_valid)
+    val tlsImportedText = stringResource(R.string.editor_tls_imported)
+    val tlsOpenFailedText = stringResource(R.string.editor_tls_open_failed)
+    val tlsDeletedText = stringResource(R.string.editor_tls_deleted)
+    val tlsDeleteFailedText = stringResource(R.string.editor_tls_delete_failed)
+    val tlsPathCopiedText = stringResource(R.string.editor_tls_path_copied)
+    val snackbarHostState = remember { SnackbarHostState() }
+    val snackbarScope = rememberCoroutineScope()
     var pendingSaveRestart by remember { mutableStateOf(false) }
+    var tlsDialog by remember { mutableStateOf(false) }
+    var pendingTlsUri by remember { mutableStateOf<Uri?>(null) }
+    var deleteTlsRole by remember { mutableStateOf<TlsFileRole?>(null) }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
@@ -150,6 +234,9 @@ fun EditorScreen(
             viewModel.saveAndRestart(context)
         }
         pendingSaveRestart = false
+    }
+    val tlsFileLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        pendingTlsUri = uri
     }
 
     fun saveAndRestartWithPermission() {
@@ -166,50 +253,260 @@ fun EditorScreen(
     LaunchedEffect(profileId) {
         viewModel.load(profileId)
     }
+    LaunchedEffect(state.tlsMessage) {
+        state.tlsMessage?.let { message ->
+            state.tlsPathToCopy?.let { path -> copyText(context, path) }
+            snackbarHostState.showSnackbar(message)
+            viewModel.consumeTlsMessage()
+        }
+    }
 
     if (state.profile == null) {
         Text(stringResource(R.string.editor_profile_missing), modifier = Modifier.padding(16.dp))
         return
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        OutlinedTextField(
-            value = state.name,
-            onValueChange = viewModel::setName,
-            label = { Text(stringResource(R.string.editor_name)) },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedTextField(
-            value = state.toml,
-            onValueChange = viewModel::setToml,
-            label = { Text(stringResource(R.string.editor_title)) },
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            minLines = 14,
-        )
-        state.validationMessage?.let { message ->
-            if (state.validationError) {
-                ErrorText(message)
-            } else {
-                Text(message, color = MaterialTheme.colorScheme.primary)
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilledTonalButton(onClick = { viewModel.validate(validText) }, enabled = !state.isBusy) {
-                Text(stringResource(R.string.editor_validate))
-            }
-            FilledTonalButton(onClick = viewModel::save, enabled = !state.isBusy) {
-                Text(stringResource(R.string.editor_save))
-            }
-            Button(onClick = { saveAndRestartWithPermission() }, enabled = !state.isBusy) {
-                if (state.isBusy) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+    Box(Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            OutlinedTextField(
+                value = state.name,
+                onValueChange = viewModel::setName,
+                label = { Text(stringResource(R.string.editor_name)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = state.toml,
+                onValueChange = viewModel::setToml,
+                label = { Text(stringResource(R.string.editor_title)) },
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                minLines = 14,
+            )
+            state.validationMessage?.let { message ->
+                if (state.validationError) {
+                    ErrorText(message)
                 } else {
-                    Text(stringResource(R.string.editor_save_restart))
+                    Text(message, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FilledTonalButton(onClick = { viewModel.validate(validText) }, enabled = !state.isBusy) {
+                    Text(stringResource(R.string.editor_validate))
+                }
+                FilledTonalButton(onClick = viewModel::save, enabled = !state.isBusy) {
+                    Text(stringResource(R.string.editor_save))
+                }
+                Button(onClick = { saveAndRestartWithPermission() }, enabled = !state.isBusy) {
+                    if (state.isBusy) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text(stringResource(R.string.editor_save_restart))
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = { tlsDialog = true }) {
+                    Icon(
+                        imageVector = Icons.Rounded.Security,
+                        contentDescription = stringResource(R.string.editor_tls_files),
+                    )
                 }
             }
         }
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
     }
+
+    if (tlsDialog) {
+        TlsFilesDialog(
+            files = state.tlsFiles,
+            onDismiss = { tlsDialog = false },
+            onImport = { tlsFileLauncher.launch(arrayOf("*/*")) },
+            onCopyPath = { file ->
+                copyText(context, file.path)
+                snackbarScope.launch {
+                    snackbarHostState.showSnackbar(tlsPathCopiedText)
+                }
+            },
+            onDelete = { file ->
+                if (file.role == TlsFileRole.PrivateKey) {
+                    deleteTlsRole = file.role
+                } else {
+                    viewModel.deleteTlsFile(file.role, tlsDeletedText, tlsDeleteFailedText)
+                }
+            },
+        )
+    }
+
+    pendingTlsUri?.let { uri ->
+        TlsRoleDialog(
+            onDismiss = { pendingTlsUri = null },
+            onSelect = { role ->
+                pendingTlsUri = null
+                viewModel.importTlsFile(uri, role, tlsImportedText, tlsOpenFailedText)
+            },
+        )
+    }
+
+    deleteTlsRole?.let { role ->
+        AlertDialog(
+            onDismissRequest = { deleteTlsRole = null },
+            title = { Text(stringResource(R.string.editor_tls_delete_private_key)) },
+            text = { Text(stringResource(R.string.editor_tls_delete_private_key_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        deleteTlsRole = null
+                        viewModel.deleteTlsFile(role, tlsDeletedText, tlsDeleteFailedText)
+                    },
+                ) {
+                    Text(stringResource(R.string.editor_tls_delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteTlsRole = null }) {
+                    Text(androidx.compose.ui.res.stringResource(android.R.string.cancel))
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun TlsFilesDialog(
+    files: List<TlsFileInfo>,
+    onDismiss: () -> Unit,
+    onImport: () -> Unit,
+    onCopyPath: (TlsFileInfo) -> Unit,
+    onDelete: (TlsFileInfo) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.editor_tls_files), modifier = Modifier.weight(1f))
+                IconButton(onClick = onImport) {
+                    Icon(
+                        imageVector = Icons.Rounded.FileOpen,
+                        contentDescription = stringResource(R.string.editor_tls_import),
+                    )
+                }
+            }
+        },
+        text = {
+            if (files.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.editor_tls_empty),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Column {
+                    files.forEachIndexed { index, file ->
+                        TlsFileRow(file, onCopyPath, onDelete)
+                        if (index < files.lastIndex) HorizontalDivider()
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.editor_tls_close))
+            }
+        },
+    )
+}
+
+@Composable
+private fun TlsFileRow(
+    file: TlsFileInfo,
+    onCopyPath: (TlsFileInfo) -> Unit,
+    onDelete: (TlsFileInfo) -> Unit,
+) {
+    val icon = when (file.role) {
+        TlsFileRole.TrustedCa -> Icons.Rounded.VerifiedUser
+        TlsFileRole.Certificate -> Icons.Rounded.Badge
+        TlsFileRole.PrivateKey -> Icons.Rounded.Key
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(tlsRoleLabel(file.role), style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = file.name,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        IconButton(onClick = { onCopyPath(file) }) {
+            Icon(
+                imageVector = Icons.Rounded.ContentCopy,
+                contentDescription = stringResource(R.string.editor_tls_copy_path),
+            )
+        }
+        IconButton(onClick = { onDelete(file) }) {
+            Icon(
+                imageVector = Icons.Rounded.Delete,
+                contentDescription = stringResource(R.string.editor_tls_delete),
+                tint = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TlsRoleDialog(
+    onDismiss: () -> Unit,
+    onSelect: (TlsFileRole) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.editor_tls_choose_role)) },
+        text = {
+            Column {
+                TlsFileRole.entries.forEach { role ->
+                    TextButton(
+                        onClick = { onSelect(role) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(tlsRoleLabel(role), modifier = Modifier.fillMaxWidth())
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(androidx.compose.ui.res.stringResource(android.R.string.cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun tlsRoleLabel(role: TlsFileRole): String =
+    stringResource(
+        when (role) {
+            TlsFileRole.TrustedCa -> R.string.editor_tls_trusted_ca
+            TlsFileRole.Certificate -> R.string.editor_tls_certificate
+            TlsFileRole.PrivateKey -> R.string.editor_tls_private_key
+        },
+    )
+
+private fun copyText(context: Context, text: String) {
+    val clipboard = context.getSystemService(ClipboardManager::class.java)
+    clipboard.setPrimaryClip(ClipData.newPlainText("TLS file path", text))
 }

@@ -53,4 +53,17 @@ class FrpRuntimeManagerTest {
 
         assertTrue(result is FrpRuntimeQueryResult.Failure)
     }
+
+    @Test
+    fun extractsTlsFilePathsFromToml() {
+        val paths = manager.tlsFilePaths(
+            """
+            transport.tls.trustedCaFile = "/files/ca.pem"
+            transport.tls.certFile = "/files/cert.pem"
+            transport.tls.keyFile = "/files/key.pem"
+            """.trimIndent(),
+        )
+
+        assertEquals(listOf("/files/ca.pem", "/files/cert.pem", "/files/key.pem"), paths)
+    }
 }

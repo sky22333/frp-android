@@ -12,6 +12,7 @@ interface FrpRuntimeGateway {
 
     fun configureTempDir(directory: File): FrpResult
     fun validateToml(toml: String): FrpResult
+    fun tlsFilePaths(toml: String): List<String>
     suspend fun registerLogCallbackOnce(sink: FrpLogSink)
     suspend fun start(profile: FrpProfile): FrpResult
     suspend fun reload(profile: FrpProfile): FrpResult
@@ -38,6 +39,7 @@ class FrpRuntimeManager(
     }
 
     override fun validateToml(toml: String): FrpResult = tomlValidator.validate(toml)
+    override fun tlsFilePaths(toml: String): List<String> = tomlValidator.tlsFilePaths(toml)
 
     override suspend fun registerLogCallbackOnce(sink: FrpLogSink) {
         logMutex.withLock {

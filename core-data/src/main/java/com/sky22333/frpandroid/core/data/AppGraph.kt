@@ -11,6 +11,7 @@ object AppGraph {
                 dao = FrpDatabase.get(context).frpDao(),
                 settingsStore = SettingsStore(context.applicationContext),
                 appCacheDir = context.applicationContext.cacheDir,
+                appFilesDir = context.applicationContext.filesDir,
             ).also { repository = it }
         }
 }
