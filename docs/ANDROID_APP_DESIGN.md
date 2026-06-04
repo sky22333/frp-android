@@ -97,6 +97,39 @@ targetSdk: 跟随最新正式稳定 Android SDK
 compileSdk: 跟随最新正式稳定 Android SDK
 ```
 
+## 当前的权限、API 与保活策略
+
+已使用权限：
+
+- `INTERNET`：frp 网络隧道。
+- `ACCESS_NETWORK_STATE`：监听网络恢复和判断默认网络类型。
+- `ACCESS_WIFI_STATE`：息屏保活增强中的 WifiLock。
+- `FOREGROUND_SERVICE`、`FOREGROUND_SERVICE_SPECIAL_USE`：持续运行用户配置的 frp 隧道。
+- `POST_NOTIFICATIONS`：Android 13+ 前台服务通知。
+- `RECEIVE_BOOT_COMPLETED`：用户开启后的开机恢复。
+- `WAKE_LOCK`：息屏保活增强中的 WakeLock 和 WifiLock。
+- `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`：引导用户手动忽略电池优化。
+
+主要 Android API：
+
+- `Service.startForeground()`、`ContextCompat.startForegroundService()`、`NotificationCompat`：前台服务与持续通知。
+- `ConnectivityManager.NetworkCallback`、`NetworkCapabilities`：网络恢复和 Wi-Fi 默认网络判断。
+- `PowerManager.PARTIAL_WAKE_LOCK`、`WifiManager.WifiLock`：可选息屏保活增强。
+- `BOOT_COMPLETED`、`WorkManager`：开机恢复、失败重试和日志清理。
+- `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`：电池优化引导。
+- `ActivityResultContracts.OpenDocument`、`ContentResolver.openInputStream()`：TOML 与 TLS 文件导入。
+
+保活策略：
+
+- 存在运行中或停止中的活动实例时使用前台服务和可见通知；无活动实例时退出前台服务。
+- 网络恢复后尝试恢复可恢复实例；失败重试使用 WorkManager、网络约束和有上限退避。
+- 用户开启开机自启后，通过开机广播恢复自动启动配置。
+- 用户可手动忽略电池优化，不强制、不反复弹窗。
+- 息屏保活增强默认关闭；开启后仅在息屏且存在活动实例时持有 WakeLock，默认网络为 Wi-Fi 时同时持有 WifiLock。
+- 不承诺绕过用户强制停止、系统或厂商后台限制。
+
+兼容提示：当前前台服务的默认网络回调使用 API 24+ `registerDefaultNetworkCallback()`，Android 6.0（API 23）设备需特别验证。
+
 ## 性能要求
 
 - 冷启动首屏目标小于 1.5 秒。
