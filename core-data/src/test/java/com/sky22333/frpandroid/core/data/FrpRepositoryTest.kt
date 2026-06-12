@@ -10,7 +10,6 @@ import com.sky22333.frpandroid.core.frp.FrpRuntimeQueryResult
 import com.sky22333.frpandroid.core.frp.FrpRuntimeState
 import com.sky22333.frpandroid.core.frp.FrpType
 import com.sky22333.frpandroid.core.frp.LanguageMode
-import com.sky22333.frpandroid.core.frp.ThemeMode
 import java.io.File
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -575,8 +574,8 @@ private class FakeSettings : SettingsGateway {
     override suspend fun setLogRetentionDays(days: Int) {
         mutableSettings.value = mutableSettings.value.copy(logRetentionDays = days)
     }
-    override suspend fun setThemeMode(mode: ThemeMode) {
-        mutableSettings.value = mutableSettings.value.copy(themeMode = mode)
+    override suspend fun setThemeSeedColor(color: Int) {
+        mutableSettings.value = mutableSettings.value.copy(themeSeedColor = color)
     }
     override suspend fun setLanguageMode(mode: LanguageMode) {
         mutableSettings.value = mutableSettings.value.copy(languageMode = mode)

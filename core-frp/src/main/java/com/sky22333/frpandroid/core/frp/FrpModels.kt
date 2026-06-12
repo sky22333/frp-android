@@ -12,6 +12,8 @@ enum class FrpInstanceStatus {
     Failed,
 }
 
+const val DEFAULT_THEME_SEED_COLOR: Int = -11567226
+
 data class FrpProfile(
     val id: String,
     val name: String,
@@ -63,13 +65,6 @@ data class FrpResult(
             return FrpResult(code = code.ifBlank { "UNKNOWN" }, message = value)
         }
     }
-}
-
-enum class ThemeMode {
-    System,
-    Light,
-    Dark,
-    Amoled,
 }
 
 enum class LanguageMode {

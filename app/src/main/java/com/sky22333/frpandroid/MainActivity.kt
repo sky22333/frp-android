@@ -30,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
@@ -54,6 +55,7 @@ import com.sky22333.frpandroid.feature.editor.EditorScreen
 import com.sky22333.frpandroid.feature.logs.LogsScreen
 import com.sky22333.frpandroid.feature.profiles.ProfilesScreen
 import com.sky22333.frpandroid.feature.settings.SettingsScreen
+import kotlinx.coroutines.flow.map
 
 class MainActivity : ComponentActivity() {
     private val startDestination = mutableStateOf<String?>(null)
@@ -68,10 +70,15 @@ class MainActivity : ComponentActivity() {
         startDestination.value = intent?.getStringExtra(FrpForegroundService.EXTRA_START_DESTINATION)
         val repository = AppGraph.repository(this)
         setContent {
-            val settings by repository.settings.collectAsStateWithLifecycle(initialValue = FrpSettings())
-            FrpAndroidTheme(themeMode = settings.themeMode) {
-                ApplySystemBars()
-                FrpApp(startDestination = startDestination.value)
+            val settingsFlow = remember(repository) {
+                repository.settings.map<FrpSettings, FrpSettings?> { it }
+            }
+            val settings by settingsFlow.collectAsStateWithLifecycle(initialValue = null)
+            settings?.let { currentSettings ->
+                FrpAndroidTheme(seedColor = currentSettings.themeSeedColor) {
+                    ApplySystemBars()
+                    FrpApp(startDestination = startDestination.value)
+                }
             }
         }
     }

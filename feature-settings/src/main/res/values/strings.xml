@@ -3,7 +3,7 @@
     <string name="settings_boot_start">Boot start</string>
     <string name="settings_notifications">Notifications</string>
     <string name="settings_battery">Battery optimization guide</string>
-    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_seed">Theme color</string>
     <string name="settings_language">Language</string>
     <string name="settings_log_retention">Log retention days</string>
     <string name="settings_background_section">Background</string>
@@ -27,9 +27,13 @@
     <string name="settings_enabled">Enabled</string>
     <string name="settings_disabled">Disabled</string>
     <string name="settings_system">Follow system</string>
-    <string name="settings_light">Light</string>
-    <string name="settings_dark">Dark</string>
-    <string name="settings_amoled">AMOLED</string>
+    <string name="settings_seed_teal">Teal</string>
+    <string name="settings_seed_blue">Blue</string>
+    <string name="settings_seed_violet">Violet</string>
+    <string name="settings_seed_green">Green</string>
+    <string name="settings_seed_amber">Amber</string>
+    <string name="settings_seed_red">Red</string>
+    <string name="settings_seed_custom">Custom</string>
     <string name="settings_chinese">Chinese</string>
     <string name="settings_english">English</string>
 </resources>

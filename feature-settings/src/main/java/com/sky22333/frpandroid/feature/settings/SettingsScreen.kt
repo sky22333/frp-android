@@ -7,23 +7,29 @@ import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings as AndroidSettings
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BatterySaver
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,6 +40,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -44,8 +51,8 @@ import androidx.lifecycle.viewModelScope
 import com.sky22333.frpandroid.core.data.AppGraph
 import com.sky22333.frpandroid.core.data.FrpDiagnostics
 import com.sky22333.frpandroid.core.data.FrpSettings
+import com.sky22333.frpandroid.core.frp.DEFAULT_THEME_SEED_COLOR
 import com.sky22333.frpandroid.core.frp.LanguageMode
-import com.sky22333.frpandroid.core.frp.ThemeMode
 import com.sky22333.frpandroid.core.runtime.FrpForegroundService
 import com.sky22333.frpandroid.core.runtime.FrpRetryWorker
 import com.sky22333.frpandroid.core.runtime.RecoveryReason
@@ -57,6 +64,20 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+private data class ThemeSeedOption(
+    val color: Int,
+    val labelRes: Int,
+)
+
+private val ThemeSeedOptions = listOf(
+    ThemeSeedOption(DEFAULT_THEME_SEED_COLOR, R.string.settings_seed_teal),
+    ThemeSeedOption(0xFF4D6BFE.toInt(), R.string.settings_seed_blue),
+    ThemeSeedOption(0xFF6D5BD0.toInt(), R.string.settings_seed_violet),
+    ThemeSeedOption(0xFF00875A.toInt(), R.string.settings_seed_green),
+    ThemeSeedOption(0xFFC26A00.toInt(), R.string.settings_seed_amber),
+    ThemeSeedOption(0xFFB3261E.toInt(), R.string.settings_seed_red),
+)
 
 data class SettingsUiState(
     val diagnostics: FrpDiagnostics? = null,
@@ -82,7 +103,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         repository.setScreenOffKeepAliveEnabled(enabled)
     }
     fun setRetention(days: Int) = viewModelScope.launch { repository.setLogRetentionDays(days) }
-    fun setTheme(mode: ThemeMode) = viewModelScope.launch { repository.setThemeMode(mode) }
+    fun setThemeSeedColor(color: Int) = viewModelScope.launch { repository.setThemeSeedColor(color) }
     fun setLanguage(mode: LanguageMode, onChanged: () -> Unit = {}) = viewModelScope.launch {
         repository.setLanguageMode(mode)
         onChanged()
@@ -107,7 +128,7 @@ fun SettingsScreen(
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var themeDialog by remember { mutableStateOf(false) }
+    var seedDialog by remember { mutableStateOf(false) }
     var languageDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -193,10 +214,11 @@ fun SettingsScreen(
         item { SectionTitle(stringResource(R.string.settings_appearance_section)) }
         item {
             FrpListRow(
-                icon = Icons.Rounded.Settings,
-                title = stringResource(R.string.settings_theme),
-                subtitle = themeLabel(settings.themeMode),
-                modifier = Modifier.padding(horizontal = 16.dp).clickable { themeDialog = true },
+                icon = Icons.Rounded.Palette,
+                title = stringResource(R.string.settings_theme_seed),
+                subtitle = themeSeedLabel(settings.themeSeedColor),
+                modifier = Modifier.padding(horizontal = 16.dp).clickable { seedDialog = true },
+                trailing = { SeedSwatch(settings.themeSeedColor) },
             )
         }
         item {
@@ -209,9 +231,12 @@ fun SettingsScreen(
         }
         item { SectionTitle(stringResource(R.string.settings_logs_section)) }
         item {
-            Card(
+            Surface(
                 modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp,
             ) {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                     Text("${stringResource(R.string.settings_log_retention)}: ${settings.logRetentionDays}")
@@ -256,16 +281,11 @@ fun SettingsScreen(
         }
     }
 
-    if (themeDialog) {
-        ChoiceDialog(
-            title = stringResource(R.string.settings_theme),
-            onDismiss = { themeDialog = false },
-            entries = listOf(
-                stringResource(R.string.settings_system) to { viewModel.setTheme(ThemeMode.System) },
-                stringResource(R.string.settings_light) to { viewModel.setTheme(ThemeMode.Light) },
-                stringResource(R.string.settings_dark) to { viewModel.setTheme(ThemeMode.Dark) },
-                stringResource(R.string.settings_amoled) to { viewModel.setTheme(ThemeMode.Amoled) },
-            ),
+    if (seedDialog) {
+        SeedColorDialog(
+            selectedColor = settings.themeSeedColor,
+            onSelect = viewModel::setThemeSeedColor,
+            onDismiss = { seedDialog = false },
         )
     }
     if (languageDialog) {
@@ -279,6 +299,47 @@ fun SettingsScreen(
             ),
         )
     }
+}
+
+@Composable
+private fun SeedSwatch(color: Int) {
+    Box(
+        modifier = Modifier
+            .size(24.dp)
+            .background(Color(color), CircleShape),
+    )
+}
+
+@Composable
+private fun SeedColorDialog(
+    selectedColor: Int,
+    onSelect: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_theme_seed)) },
+        text = {
+            Column {
+                ThemeSeedOptions.forEach { option ->
+                    FilterChip(
+                        selected = selectedColor == option.color,
+                        onClick = {
+                            onSelect(option.color)
+                            onDismiss()
+                        },
+                        label = { Text(stringResource(option.labelRes)) },
+                        leadingIcon = { SeedSwatch(option.color) },
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(androidx.compose.ui.res.stringResource(android.R.string.cancel))
+            }
+        },
+    )
 }
 
 @Composable
@@ -374,13 +435,8 @@ private fun isIgnoringBatteryOptimizations(context: Context): Boolean {
 }
 
 @Composable
-private fun themeLabel(mode: ThemeMode): String =
-    when (mode) {
-        ThemeMode.System -> stringResource(R.string.settings_system)
-        ThemeMode.Light -> stringResource(R.string.settings_light)
-        ThemeMode.Dark -> stringResource(R.string.settings_dark)
-        ThemeMode.Amoled -> stringResource(R.string.settings_amoled)
-    }
+private fun themeSeedLabel(color: Int): String =
+    stringResource(ThemeSeedOptions.firstOrNull { it.color == color }?.labelRes ?: R.string.settings_seed_custom)
 
 @Composable
 private fun languageLabel(mode: LanguageMode): String =

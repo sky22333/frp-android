@@ -11,7 +11,6 @@ import com.sky22333.frpandroid.core.frp.FrpRuntimeQueryResult
 import com.sky22333.frpandroid.core.frp.FrpRuntimeState
 import com.sky22333.frpandroid.core.frp.FrpType
 import com.sky22333.frpandroid.core.frp.LanguageMode
-import com.sky22333.frpandroid.core.frp.ThemeMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -348,7 +347,7 @@ class FrpRepository(
     suspend fun setAutoRetryEnabled(enabled: Boolean) = settingsStore.setAutoRetryEnabled(enabled)
     suspend fun setScreenOffKeepAliveEnabled(enabled: Boolean) = settingsStore.setScreenOffKeepAliveEnabled(enabled)
     suspend fun setLogRetentionDays(days: Int) = settingsStore.setLogRetentionDays(days)
-    suspend fun setThemeMode(mode: ThemeMode) = settingsStore.setThemeMode(mode)
+    suspend fun setThemeSeedColor(color: Int) = settingsStore.setThemeSeedColor(color)
     suspend fun setLanguageMode(mode: LanguageMode) = settingsStore.setLanguageMode(mode)
     suspend fun setPendingStart(pending: Boolean) = settingsStore.setPendingStart(pending)
 

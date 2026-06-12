@@ -14,6 +14,7 @@ datastore = "1.2.1"
 room = "2.8.4"
 work = "2.11.2"
 coroutines = "1.11.0"
+materialKolor = "4.1.1"
 tomlj = "1.1.1"
 junit = "4.13.2"
 coroutinesTest = "1.11.0"
@@ -38,6 +39,7 @@ compose-ui = { module = "androidx.compose.ui:ui" }
 compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+material-kolor = { module = "com.materialkolor:material-kolor", version.ref = "materialKolor" }
 tomlj = { module = "org.tomlj:tomlj", version.ref = "tomlj" }
 junit = { module = "junit:junit", version.ref = "junit" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutinesTest" }

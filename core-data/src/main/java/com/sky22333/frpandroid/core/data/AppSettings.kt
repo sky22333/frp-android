@@ -7,8 +7,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.sky22333.frpandroid.core.frp.DEFAULT_THEME_SEED_COLOR
 import com.sky22333.frpandroid.core.frp.LanguageMode
-import com.sky22333.frpandroid.core.frp.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -18,7 +18,7 @@ data class FrpSettings(
     val autoRetryEnabled: Boolean = false,
     val screenOffKeepAliveEnabled: Boolean = false,
     val logRetentionDays: Int = 7,
-    val themeMode: ThemeMode = ThemeMode.System,
+    val themeSeedColor: Int = DEFAULT_THEME_SEED_COLOR,
     val languageMode: LanguageMode = LanguageMode.System,
     val pendingStart: Boolean = false,
 )
@@ -41,7 +41,7 @@ interface SettingsGateway {
     suspend fun setAutoRetryEnabled(enabled: Boolean)
     suspend fun setScreenOffKeepAliveEnabled(enabled: Boolean)
     suspend fun setLogRetentionDays(days: Int)
-    suspend fun setThemeMode(mode: ThemeMode)
+    suspend fun setThemeSeedColor(color: Int)
     suspend fun setLanguageMode(mode: LanguageMode)
     suspend fun setPendingStart(pending: Boolean)
 }
@@ -56,7 +56,7 @@ class SettingsStore(private val context: Context) : SettingsGateway {
             autoRetryEnabled = preferences[Keys.autoRetry] ?: false,
             screenOffKeepAliveEnabled = preferences[Keys.screenOffKeepAlive] ?: false,
             logRetentionDays = preferences[Keys.logRetentionDays] ?: 7,
-            themeMode = preferences.enumValue(Keys.themeMode, ThemeMode.System),
+            themeSeedColor = preferences[Keys.themeSeedColor] ?: DEFAULT_THEME_SEED_COLOR,
             languageMode = preferences.enumValue(Keys.languageMode, LanguageMode.System),
             pendingStart = preferences[Keys.pendingStart] ?: false,
         )
@@ -67,7 +67,7 @@ class SettingsStore(private val context: Context) : SettingsGateway {
     override suspend fun setAutoRetryEnabled(enabled: Boolean) = set(Keys.autoRetry, enabled)
     override suspend fun setScreenOffKeepAliveEnabled(enabled: Boolean) = set(Keys.screenOffKeepAlive, enabled)
     override suspend fun setLogRetentionDays(days: Int) = set(Keys.logRetentionDays, days.coerceIn(1, 365))
-    override suspend fun setThemeMode(mode: ThemeMode) = set(Keys.themeMode, mode.name)
+    override suspend fun setThemeSeedColor(color: Int) = set(Keys.themeSeedColor, color)
     override suspend fun setLanguageMode(mode: LanguageMode) = set(Keys.languageMode, mode.name)
     override suspend fun setPendingStart(pending: Boolean) = set(Keys.pendingStart, pending)
 
@@ -88,7 +88,7 @@ class SettingsStore(private val context: Context) : SettingsGateway {
         val autoRetry = booleanPreferencesKey("auto_retry")
         val screenOffKeepAlive = booleanPreferencesKey("screen_off_keep_alive")
         val logRetentionDays = intPreferencesKey("log_retention_days")
-        val themeMode = stringPreferencesKey("theme_mode")
+        val themeSeedColor = intPreferencesKey("theme_seed_color")
         val languageMode = stringPreferencesKey("language_mode")
         val pendingStart = booleanPreferencesKey("pending_start")
     }
