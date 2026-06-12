@@ -1,5 +1,4 @@
 <resources>
-    <string name="profiles_title">配置</string>
     <string name="profiles_new">新建</string>
     <string name="profiles_new_frpc">新建 frpc</string>
     <string name="profiles_new_frps">新建 frps</string>

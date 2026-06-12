@@ -1,5 +1,4 @@
 <resources>
-    <string name="settings_title">设置</string>
     <string name="settings_boot_start">开机自启</string>
     <string name="settings_notifications">通知设置</string>
     <string name="settings_battery">电池优化引导</string>

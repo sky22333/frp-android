@@ -5,5 +5,4 @@
     <string name="nav_logs">Logs</string>
     <string name="nav_settings">Settings</string>
     <string name="app_title">frp console</string>
-    <string name="notification_permission">Notification permission is needed before starting foreground tunnels.</string>
 </resources>

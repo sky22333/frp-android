@@ -110,7 +110,7 @@ remotePort = 8080
 
 ## 系统要求
 
-* Android 6.0+
+* Android 7.0+
 * 推荐 Android 8+
 
 ---

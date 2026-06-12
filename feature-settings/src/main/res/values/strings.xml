@@ -1,5 +1,4 @@
 <resources>
-    <string name="settings_title">Settings</string>
     <string name="settings_boot_start">Boot start</string>
     <string name="settings_notifications">Notifications</string>
     <string name="settings_battery">Battery optimization guide</string>

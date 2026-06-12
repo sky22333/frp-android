@@ -1,5 +1,4 @@
 <resources>
-    <string name="dashboard_title">控制台</string>
     <string name="dashboard_running">运行中</string>
     <string name="dashboard_stopped">已停止</string>
     <string name="dashboard_instances_summary">%1$d 个运行 · %2$d 个失败</string>

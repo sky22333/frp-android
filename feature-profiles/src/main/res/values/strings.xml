@@ -1,5 +1,4 @@
 <resources>
-    <string name="profiles_title">Profiles</string>
     <string name="profiles_new">New</string>
     <string name="profiles_new_frpc">New frpc</string>
     <string name="profiles_new_frps">New frps</string>

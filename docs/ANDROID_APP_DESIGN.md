@@ -10,7 +10,7 @@ frp-android/
 ├─ .github/workflows/
 │  └─ android-release.yml        # GitHub Actions 发布流水线，下载 frplib、构建签名 Release、上传产物
 ├─ app/                          # Android 应用壳层，负责入口、导航、主题、语言切换
-│  ├─ build.gradle.kts           # app 模块 Gradle 配置，多 ABI AAR 依赖、签名、Compose 依赖
+│  ├─ build.gradle.kts           # app 模块 Gradle 配置、frplib 通用 AAR 依赖、ABI splits、签名、Compose 依赖
 │  └─ src/main/
 │     ├─ AndroidManifest.xml     # 应用声明、MainActivity、图标、主题
 │     ├─ java/.../frpandroid/
@@ -22,7 +22,7 @@ frp-android/
 │  └─ src/main/java/.../core/frp/
 │     ├─ FrplibBridge.kt         # 反射调用 gomobile 生成的 frplib API
 │     ├─ FrpRuntimeManager.kt    # start/stop/reload/listInstances 运行管理
-│     ├─ FrpModels.kt            # Profile、RuntimeState、Result、Theme/Language 等模型
+│     ├─ FrpModels.kt            # Profile、RuntimeState、Result、Language、主题种子色等模型
 │     ├─ FrpLogSink.kt           # frplib 日志回调接入
 │     └─ TomlValidator.kt        # TOML 配置校验
 ├─ core-data/                    # 数据层
@@ -41,7 +41,7 @@ frp-android/
 │     └─ FrpRuntimePolicy.kt     # 运行/重试策略判断
 ├─ core-ui/                      # 公共 UI
 │  └─ src/main/java/.../core/ui/
-│     ├─ FrpTheme.kt             # Material3 主题、浅色/深色/AMOLED
+│     ├─ FrpTheme.kt             # MaterialKolor 动态配色主题
 │     └─ CommonUi.kt             # 通用列表行、分组标题等组件
 ├─ feature-dashboard/            # 控制台页面
 │  └─ DashboardScreen.kt         # 实例概览、启动、停止、重启、停止全部
@@ -52,9 +52,9 @@ frp-android/
 ├─ feature-logs/                 # 日志页面
 │  └─ LogsScreen.kt              # 日志筛选、暂停滚动、复制当前筛选日志、清空日志
 ├─ feature-settings/             # 设置页面
-│  └─ SettingsScreen.kt          # 后台、自启、电池、主题、语言、诊断、版本入口
+│  └─ SettingsScreen.kt          # 后台、自启、电池、主题配色、语言、应用版本、内核版本入口
 ├─ ci/                           # CI 辅助脚本
-│  ├─ download-frplib.sh         # 下载 sky22333/frplib Latest 多架构 AAR
+│  ├─ download-frplib.sh         # 下载 sky22333/frplib Latest 通用 AAR
 │  ├─ validate-frplib.sh         # 校验 frplib AAR 和 gomobile API
 │  └─ collect-apks.sh            # 收集 Release APK 产物
 ├─ docs/                         # 文档和迭代记录
@@ -81,7 +81,7 @@ frp-android/
 - 支持前台服务常驻通知。
 - 支持用户开启后的开机自启。
 - 支持现代 Material Design 3 UI。
-- 默认浅色主题，支持深色和 AMOLED。
+- 使用 MaterialKolor 基于主题配色种子生成配色，跟随系统深色模式。
 - 支持中文和英文，默认跟随系统语言，也可在设置页手动切换。
 - 不承诺绕过系统限制，不做隐藏通知和后台静默保活。
 
@@ -92,9 +92,9 @@ frp-android/
 ## Android 版本策略
 
 ```text
-minSdk: 23
-targetSdk: 跟随最新正式稳定 Android SDK
-compileSdk: 跟随最新正式稳定 Android SDK
+minSdk: 24
+targetSdk: 36
+compileSdk: 37
 ```
 
 ## 当前的权限、API 与保活策略
@@ -128,8 +128,6 @@ compileSdk: 跟随最新正式稳定 Android SDK
 - 息屏保活增强默认关闭；开启后仅在息屏且存在活动实例时持有 WakeLock，默认网络为 Wi-Fi 时同时持有 WifiLock。
 - 不承诺绕过用户强制停止、系统或厂商后台限制。
 
-兼容提示：当前前台服务的默认网络回调使用 API 24+ `registerDefaultNetworkCallback()`，Android 6.0（API 23）设备需特别验证。
-
 ## 性能要求
 
 - 冷启动首屏目标小于 1.5 秒。
@@ -138,7 +136,8 @@ compileSdk: 跟随最新正式稳定 Android SDK
 - 日志使用固定大小内存缓存。
 - 日志批量写入数据库。
 - 日志页面展示当前筛选条件下最近 150 条。
-- 日志用于诊断；极端日志洪峰超过内存缓存时保留最新待处理日志，不以日志推断实例运行状态。
+- 日志用于排查问题；极端日志洪峰超过内存缓存时保留最新待处理日志，不以日志推断实例运行状态。
+- 设置页内核版本仅在用户点击“内核版本”时查询，不在进入页面时触发 native 调用。
 - Compose 列表使用稳定 key。
 - 不在 Composable 内创建重对象。
 - 无运行实例时停止前台服务。

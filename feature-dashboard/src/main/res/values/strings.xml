@@ -1,5 +1,4 @@
 ﻿<resources>
-    <string name="dashboard_title">Dashboard</string>
     <string name="dashboard_running">Running</string>
     <string name="dashboard_stopped">Stopped</string>
     <string name="dashboard_instances_summary">%1$d running · %2$d failed</string>
