@@ -37,12 +37,12 @@ jobs:
       - name: 安装下载工具
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: 下载 frplib latest 多架构 AAR
+      - name: 下载 frplib latest universal AAR
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash ci/download-frplib.sh
 
-      - name: 验收 frplib AAR
+      - name: 验收 frplib universal AAR
         run: bash ci/validate-frplib.sh
 
       - name: 准备 PKCS#12 Release 签名文件
@@ -66,20 +66,10 @@ jobs:
         run: gradle test
 
       - name: 运行 Release Lint
-        run: >
-          gradle
-          :app:lintUniversalRelease
-          :app:lintArm64V8aRelease
-          :app:lintArmeabiV7aRelease
-          :app:lintX86_64Release
+        run: gradle :app:lintRelease
 
       - name: 构建签名 Release 多架构 APK
-        run: >
-          gradle
-          :app:assembleUniversalRelease
-          :app:assembleArm64V8aRelease
-          :app:assembleArmeabiV7aRelease
-          :app:assembleX86_64Release
+        run: gradle :app:assembleRelease
 
       - name: 整理 Release APK 文件名
         run: bash ci/collect-apks.sh

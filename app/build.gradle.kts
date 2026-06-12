@@ -17,34 +17,17 @@ android {
         versionName = appVersionName
     }
 
-    flavorDimensions += "abi"
-
-    productFlavors {
-        create("universal") {
-            dimension = "abi"
-        }
-        create("arm64V8a") {
-            dimension = "abi"
-            ndk {
-                abiFilters += "arm64-v8a"
-            }
-        }
-        create("armeabiV7a") {
-            dimension = "abi"
-            ndk {
-                abiFilters += "armeabi-v7a"
-            }
-        }
-        create("x86_64") {
-            dimension = "abi"
-            ndk {
-                abiFilters += "x86_64"
-            }
-        }
-    }
-
     buildFeatures {
         compose = true
+    }
+
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86_64")
+            isUniversalApk = true
+        }
     }
 
     signingConfigs {
@@ -77,10 +60,7 @@ android {
 }
 
 dependencies {
-    "universalImplementation"(files("libs/universal/frplib-universal.aar"))
-    "arm64V8aImplementation"(files("libs/arm64-v8a/frplib-arm64-v8a.aar"))
-    "armeabiV7aImplementation"(files("libs/armeabi-v7a/frplib-armeabi-v7a.aar"))
-    "x86_64Implementation"(files("libs/x86_64/frplib-x86_64.aar"))
+    implementation(files("libs/frplib-universal.aar"))
 
     implementation(project(":core-frp"))
     implementation(project(":core-runtime"))

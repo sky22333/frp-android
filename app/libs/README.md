@@ -1,12 +1,9 @@
-Place the generated frplib AAR files here.
+Place the generated frplib universal AAR here.
 
 Expected layout:
 
 ```text
-app/libs/universal/frplib-universal.aar
-app/libs/arm64-v8a/frplib-arm64-v8a.aar
-app/libs/armeabi-v7a/frplib-armeabi-v7a.aar
-app/libs/x86_64/frplib-x86_64.aar
+app/libs/frplib-universal.aar
 ```
 
-The CI workflow downloads these files automatically from the latest `frplib` release.
+The app's ABI splits filter the native libraries from the universal AAR at packaging time.

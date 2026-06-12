@@ -70,10 +70,14 @@ validate_aar() {
     exit 1
   }
 
+  for abi in armeabi-v7a arm64-v8a x86_64; do
+    if [[ ! -f "${tmp_dir}/${name}/jni/${abi}/libgojni.so" ]]; then
+      echo "AAR 缺少 native library: jni/${abi}/libgojni.so (${aar})" >&2
+      exit 1
+    fi
+  done
+
   echo "AAR 验收通过: ${aar}"
 }
 
-validate_aar "${root_dir}/app/libs/universal/frplib-universal.aar"
-validate_aar "${root_dir}/app/libs/arm64-v8a/frplib-arm64-v8a.aar"
-validate_aar "${root_dir}/app/libs/armeabi-v7a/frplib-armeabi-v7a.aar"
-validate_aar "${root_dir}/app/libs/x86_64/frplib-x86_64.aar"
+validate_aar "${root_dir}/app/libs/frplib-universal.aar"
