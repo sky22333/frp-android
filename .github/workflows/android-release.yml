@@ -32,7 +32,7 @@ jobs:
       - name: 配置 Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 9.2.1
+          gradle-version: 9.4.1
 
       - name: 安装下载工具
         run: sudo apt-get update && sudo apt-get install -y jq
