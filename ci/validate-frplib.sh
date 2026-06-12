@@ -3,81 +3,65 @@ set -euo pipefail
 
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 tmp_dir="${root_dir}/build/frplib-validation"
+aar="${root_dir}/app/libs/frplib-universal.aar"
+name="$(basename "${aar}" .aar)"
+extract_dir="${tmp_dir}/${name}"
 
-validate_aar() {
-  local aar="$1"
-  local name
+if [[ ! -f "${aar}" ]]; then
+  echo "缺少 AAR: ${aar}" >&2
+  exit 1
+fi
 
-  if [[ ! -f "${aar}" ]]; then
-    echo "缺少 AAR: ${aar}" >&2
-    exit 1
-  fi
+rm -rf "${extract_dir}"
+mkdir -p "${extract_dir}"
+unzip -q "${aar}" -d "${extract_dir}"
 
-  name="$(basename "${aar}" .aar)"
-  rm -rf "${tmp_dir}/${name}"
-  mkdir -p "${tmp_dir}/${name}"
-  unzip -q "${aar}" -d "${tmp_dir}/${name}"
+classes_jar="${extract_dir}/classes.jar"
+if [[ ! -f "${classes_jar}" ]]; then
+  echo "AAR 缺少 classes.jar: ${aar}" >&2
+  exit 1
+fi
 
-  if [[ ! -f "${tmp_dir}/${name}/classes.jar" ]]; then
-    echo "AAR 缺少 classes.jar: ${aar}" >&2
-    exit 1
-  fi
-
-  jar tf "${tmp_dir}/${name}/classes.jar" | grep -q "io/github/sky22333/frplib/Frplib.class" || {
-    echo "AAR 缺少 Frplib.class: ${aar}" >&2
-    exit 1
-  }
-
-  jar tf "${tmp_dir}/${name}/classes.jar" | grep -q "io/github/sky22333/frplib/FrpLogCallback.class" || {
-    echo "AAR 缺少 FrpLogCallback.class: ${aar}" >&2
-    exit 1
-  }
-
-  local frplib_api
-  frplib_api="$(javap -classpath "${tmp_dir}/${name}/classes.jar" io.github.sky22333.frplib.Frplib)"
-  for method in \
-    version \
-    setTempDir \
-    startClient \
-    stopClient \
-    reloadClient \
-    isClientRunning \
-    startServer \
-    stopServer \
-    reloadServer \
-    isServerRunning \
-    startClientWithID \
-    startServerWithID \
-    reloadClientWithID \
-    reloadServerWithID \
-    stopClientWithID \
-    stopServerWithID \
-    isClientRunningWithID \
-    isServerRunningWithID \
-    stopAll \
-    listInstances \
-    setLogCallback; do
-    printf '%s' "${frplib_api}" | grep -q "${method}" || {
-      echo "AAR Frplib 缺少方法: ${method} (${aar})" >&2
-      exit 1
-    }
-  done
-
-  local callback_api
-  callback_api="$(javap -classpath "${tmp_dir}/${name}/classes.jar" io.github.sky22333.frplib.FrpLogCallback)"
-  printf '%s' "${callback_api}" | grep -q "onLog" || {
-    echo "AAR FrpLogCallback 缺少 onLog (${aar})" >&2
-    exit 1
-  }
-
-  for abi in armeabi-v7a arm64-v8a x86_64; do
-    if [[ ! -f "${tmp_dir}/${name}/jni/${abi}/libgojni.so" ]]; then
-      echo "AAR 缺少 native library: jni/${abi}/libgojni.so (${aar})" >&2
-      exit 1
-    fi
-  done
-
-  echo "AAR 验收通过: ${aar}"
+jar tf "${classes_jar}" | grep -q "io/github/sky22333/frplib/Frplib.class" || {
+  echo "AAR 缺少 Frplib.class: ${aar}" >&2
+  exit 1
 }
 
-validate_aar "${root_dir}/app/libs/frplib-universal.aar"
+jar tf "${classes_jar}" | grep -q "io/github/sky22333/frplib/FrpLogCallback.class" || {
+  echo "AAR 缺少 FrpLogCallback.class: ${aar}" >&2
+  exit 1
+}
+
+frplib_api="$(javap -classpath "${classes_jar}" io.github.sky22333.frplib.Frplib)"
+for method in \
+  version \
+  setTempDir \
+  startClientWithID \
+  startServerWithID \
+  reloadClientWithID \
+  reloadServerWithID \
+  stopClientWithID \
+  stopServerWithID \
+  stopAll \
+  listInstances \
+  setLogCallback; do
+  printf '%s' "${frplib_api}" | grep -q "${method}" || {
+    echo "AAR Frplib 缺少方法: ${method} (${aar})" >&2
+    exit 1
+  }
+done
+
+callback_api="$(javap -classpath "${classes_jar}" io.github.sky22333.frplib.FrpLogCallback)"
+printf '%s' "${callback_api}" | grep -q "onLog" || {
+  echo "AAR FrpLogCallback 缺少 onLog (${aar})" >&2
+  exit 1
+}
+
+for abi in armeabi-v7a arm64-v8a x86_64; do
+  if [[ ! -f "${extract_dir}/jni/${abi}/libgojni.so" ]]; then
+    echo "AAR 缺少 native library: jni/${abi}/libgojni.so (${aar})" >&2
+    exit 1
+  fi
+done
+
+echo "AAR 验收通过: ${aar}"

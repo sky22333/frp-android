@@ -15,7 +15,9 @@
     <string name="settings_network_reconnect">Reconnect after network recovery</string>
     <string name="settings_auto_retry">Auto retry after failure</string>
     <string name="settings_screen_off_keep_alive">Enhanced screen-off keep alive</string>
-    <string name="settings_version">Version</string>
+    <string name="settings_app_version">Application version</string>
+    <string name="settings_kernel_version">Kernel version</string>
+    <string name="settings_kernel_version_hint">Tap to view</string>
     <string name="settings_pending_start">Boot recovery is pending</string>
     <string name="settings_pending_start_hint">Tap to recover eligible tunnels</string>
     <string name="settings_notifications_hint">Open this app\'s notification settings</string>

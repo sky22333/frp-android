@@ -17,6 +17,7 @@ interface FrpRuntimeGateway {
     suspend fun stop(id: String, type: FrpType): FrpResult
     suspend fun stopAll(): FrpResult
     suspend fun listInstances(): FrpRuntimeQueryResult
+    suspend fun version(): String
 }
 
 class FrpRuntimeManager(
@@ -85,6 +86,10 @@ class FrpRuntimeManager(
             is BridgeCallResult.Failure -> FrpRuntimeQueryResult.Failure(result.message)
             is BridgeCallResult.Success -> parseInstances(result.value)
         }
+    }
+
+    override suspend fun version(): String = withContext(ioDispatcher) {
+        bridge.version()
     }
 
     internal fun parseInstances(raw: String): FrpRuntimeQueryResult {

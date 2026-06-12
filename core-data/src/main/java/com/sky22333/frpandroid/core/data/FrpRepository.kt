@@ -155,6 +155,7 @@ class FrpRepository(
         settings.first().autoRetryEnabled
 
     fun validateToml(toml: String): FrpResult = runtimeManager.validateToml(toml)
+    suspend fun kernelVersion(): String = runtimeManager.version()
 
     suspend fun isProfileActive(id: String): Boolean {
         val state = dao.getRuntimeStates().firstOrNull { it.id == id }?.state

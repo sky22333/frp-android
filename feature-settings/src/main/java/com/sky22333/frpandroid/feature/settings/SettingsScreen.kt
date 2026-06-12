@@ -20,6 +20,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BatterySaver
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PowerSettingsNew
@@ -55,6 +57,7 @@ import com.sky22333.frpandroid.core.runtime.FrpRetryWorker
 import com.sky22333.frpandroid.core.runtime.RecoveryReason
 import com.sky22333.frpandroid.core.ui.FrpListRow
 import com.sky22333.frpandroid.core.ui.SectionTitle
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -76,8 +79,10 @@ private val ThemeSeedOptions = listOf(
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppGraph.repository(application)
+    private val mutableKernelVersion = MutableStateFlow<String?>(null)
     val settings: StateFlow<FrpSettings> = repository.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FrpSettings())
+    val kernelVersion: StateFlow<String?> = mutableKernelVersion
 
     fun setBootStart(enabled: Boolean) = viewModelScope.launch { repository.setBootStartEnabled(enabled) }
     fun setNetworkReconnect(enabled: Boolean) = viewModelScope.launch {
@@ -97,6 +102,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         repository.setLanguageMode(mode)
         onChanged()
     }
+    fun loadKernelVersion() = viewModelScope.launch {
+        if (mutableKernelVersion.value == null) {
+            mutableKernelVersion.value = repository.kernelVersion()
+        }
+    }
     fun recoverPendingStart(context: Context) = viewModelScope.launch {
         val recoverableProfiles = repository.getNetworkRecoverableProfiles()
         val profiles = if (recoverableProfiles.isNotEmpty()) recoverableProfiles else repository.getAutoStartProfiles()
@@ -112,6 +122,7 @@ fun SettingsScreen(
     onLanguageChanged: () -> Unit = {},
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val kernelVersion by viewModel.kernelVersion.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var seedDialog by remember { mutableStateOf(false) }
     var languageDialog by remember { mutableStateOf(false) }
@@ -233,10 +244,18 @@ fun SettingsScreen(
         item { SectionTitle(stringResource(R.string.settings_about_section)) }
         item {
             FrpListRow(
-                icon = Icons.Rounded.Settings,
-                title = stringResource(R.string.settings_version),
+                icon = Icons.Rounded.Info,
+                title = stringResource(R.string.settings_app_version),
                 subtitle = BuildConfig.APP_VERSION_NAME,
                 modifier = Modifier.padding(horizontal = 16.dp).clickable { openProjectPage(context) },
+            )
+        }
+        item {
+            FrpListRow(
+                icon = Icons.Rounded.Memory,
+                title = stringResource(R.string.settings_kernel_version),
+                subtitle = kernelVersion ?: stringResource(R.string.settings_kernel_version_hint),
+                modifier = Modifier.padding(horizontal = 16.dp).clickable { viewModel.loadKernelVersion() },
             )
         }
     }

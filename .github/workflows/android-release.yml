@@ -34,12 +34,7 @@ jobs:
         with:
           gradle-version: 9.4.1
 
-      - name: 安装下载工具
-        run: sudo apt-get update && sudo apt-get install -y jq
-
       - name: 下载 frplib latest universal AAR
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash ci/download-frplib.sh
 
       - name: 验收 frplib universal AAR

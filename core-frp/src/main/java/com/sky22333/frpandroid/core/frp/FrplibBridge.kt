@@ -21,6 +21,7 @@ class FrplibBridge {
     fun stopServer(id: String): String = invokeString("stopServerWithID", id)
     fun stopAll(): String = invokeString("stopAll")
     fun listInstances(): BridgeCallResult = invoke("listInstances")
+    fun version(): String = invokeString("version")
 
     fun setLogCallback(sink: FrpLogSink) {
         val target = frplibClass() ?: return

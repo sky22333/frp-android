@@ -15,7 +15,9 @@
     <string name="settings_network_reconnect">网络恢复后重连</string>
     <string name="settings_auto_retry">失败后自动重试</string>
     <string name="settings_screen_off_keep_alive">息屏保活增强</string>
-    <string name="settings_version">版本</string>
+    <string name="settings_app_version">应用版本</string>
+    <string name="settings_kernel_version">内核版本</string>
+    <string name="settings_kernel_version_hint">点击查看</string>
     <string name="settings_pending_start">存在待恢复的开机自启任务</string>
     <string name="settings_pending_start_hint">点击恢复可运行的隧道</string>
     <string name="settings_notifications_hint">打开此应用的通知设置</string>

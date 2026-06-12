@@ -517,6 +517,7 @@ private class FakeRuntime(
     var listInstancesResult: List<FrpRuntimeState> = emptyList(),
     var listInstancesQueryResult: FrpRuntimeQueryResult? = null,
     var tlsFilePathsResult: List<String> = emptyList(),
+    var versionResult: String = "test-kernel",
 ) : FrpRuntimeGateway {
     var startCalls = 0
     var reloadCalls = 0
@@ -551,6 +552,7 @@ private class FakeRuntime(
         listInstancesCalls += 1
         return listInstancesQueryResult ?: FrpRuntimeQueryResult.Success(listInstancesResult)
     }
+    override suspend fun version(): String = versionResult
 }
 
 private class FakeSettings : SettingsGateway {
