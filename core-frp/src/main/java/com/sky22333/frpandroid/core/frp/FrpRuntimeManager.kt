@@ -8,8 +8,6 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 interface FrpRuntimeGateway {
-    val isNativeAvailable: Boolean
-
     fun configureTempDir(directory: File): FrpResult
     fun validateToml(toml: String): FrpResult
     fun tlsFilePaths(toml: String): List<String>
@@ -29,9 +27,6 @@ class FrpRuntimeManager(
     private val logMutex = Mutex()
     private var logCallbackRegistered = false
     private var tempDirResult = FrpResult(code = null, message = "")
-
-    override val isNativeAvailable: Boolean
-        get() = bridge.isAvailable
 
     override fun configureTempDir(directory: File): FrpResult {
         tempDirResult = FrpResult.fromRaw(bridge.configureTempDir(directory))

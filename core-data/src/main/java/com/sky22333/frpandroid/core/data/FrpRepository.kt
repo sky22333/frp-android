@@ -68,9 +68,6 @@ class FrpRepository(
 
     val settings: Flow<FrpSettings> = settingsStore.settings
 
-    val isNativeAvailable: Boolean
-        get() = runtimeManager.isNativeAvailable
-
     suspend fun initialize() {
         val ready = ensureRuntimeReady()
         if (!ready.isSuccess) return
@@ -156,20 +153,6 @@ class FrpRepository(
 
     suspend fun shouldAutoRetryFailures(): Boolean =
         settings.first().autoRetryEnabled
-
-    suspend fun diagnostics(): FrpDiagnostics {
-        val states = dao.getRuntimeStates()
-        val currentSettings = settings.first()
-        return FrpDiagnostics(
-            nativeAvailable = isNativeAvailable,
-            runtimeInitialized = initialized,
-            tempDirStatus = runtimeInitResult.message.ifBlank { "OK" },
-            runningCount = states.count { it.state == FrpInstanceStatus.Running },
-            failedCount = states.count { it.state == FrpInstanceStatus.Failed },
-            pendingStart = currentSettings.pendingStart,
-            lastError = states.lastOrNull { !it.lastError.isNullOrBlank() }?.lastError,
-        )
-    }
 
     fun validateToml(toml: String): FrpResult = runtimeManager.validateToml(toml)
 

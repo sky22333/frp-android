@@ -23,16 +23,6 @@ data class FrpSettings(
     val pendingStart: Boolean = false,
 )
 
-data class FrpDiagnostics(
-    val nativeAvailable: Boolean,
-    val runtimeInitialized: Boolean,
-    val tempDirStatus: String,
-    val runningCount: Int,
-    val failedCount: Int,
-    val pendingStart: Boolean,
-    val lastError: String?,
-)
-
 interface SettingsGateway {
     val settings: Flow<FrpSettings>
 

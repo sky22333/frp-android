@@ -20,7 +20,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BatterySaver
-import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PowerSettingsNew
@@ -34,7 +33,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,7 +47,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.sky22333.frpandroid.core.data.AppGraph
-import com.sky22333.frpandroid.core.data.FrpDiagnostics
 import com.sky22333.frpandroid.core.data.FrpSettings
 import com.sky22333.frpandroid.core.frp.DEFAULT_THEME_SEED_COLOR
 import com.sky22333.frpandroid.core.frp.LanguageMode
@@ -58,11 +55,9 @@ import com.sky22333.frpandroid.core.runtime.FrpRetryWorker
 import com.sky22333.frpandroid.core.runtime.RecoveryReason
 import com.sky22333.frpandroid.core.ui.FrpListRow
 import com.sky22333.frpandroid.core.ui.SectionTitle
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 private data class ThemeSeedOption(
@@ -79,14 +74,8 @@ private val ThemeSeedOptions = listOf(
     ThemeSeedOption(0xFFB3261E.toInt(), R.string.settings_seed_red),
 )
 
-data class SettingsUiState(
-    val diagnostics: FrpDiagnostics? = null,
-)
-
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppGraph.repository(application)
-    private val mutableUiState = MutableStateFlow(SettingsUiState())
-    val uiState: StateFlow<SettingsUiState> = mutableUiState
     val settings: StateFlow<FrpSettings> = repository.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FrpSettings())
 
@@ -108,9 +97,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         repository.setLanguageMode(mode)
         onChanged()
     }
-    fun refreshDiagnostics() = viewModelScope.launch {
-        mutableUiState.update { it.copy(diagnostics = repository.diagnostics()) }
-    }
     fun recoverPendingStart(context: Context) = viewModelScope.launch {
         val recoverableProfiles = repository.getNetworkRecoverableProfiles()
         val profiles = if (recoverableProfiles.isNotEmpty()) recoverableProfiles else repository.getAutoStartProfiles()
@@ -126,14 +112,9 @@ fun SettingsScreen(
     onLanguageChanged: () -> Unit = {},
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var seedDialog by remember { mutableStateOf(false) }
     var languageDialog by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        viewModel.refreshDiagnostics()
-    }
 
     LazyColumn(Modifier.fillMaxSize()) {
         if (settings.pendingStart) {
@@ -247,27 +228,6 @@ fun SettingsScreen(
                         steps = 28,
                     )
                 }
-            }
-        }
-        item { SectionTitle(stringResource(R.string.settings_diagnostics_section)) }
-        uiState.diagnostics?.let { diagnostics ->
-            item {
-                FrpListRow(
-                    icon = Icons.Rounded.BugReport,
-                    title = stringResource(R.string.settings_diagnostics_summary),
-                    subtitle = stringResource(
-                        R.string.settings_diagnostics_details,
-                        diagnostics.nativeAvailable,
-                        diagnostics.runtimeInitialized,
-                        diagnostics.tempDirStatus,
-                        diagnostics.runningCount,
-                        diagnostics.failedCount,
-                        diagnostics.pendingStart,
-                        diagnostics.lastError ?: "-",
-                    ),
-                    statusRunning = diagnostics.nativeAvailable,
-                    modifier = Modifier.padding(horizontal = 16.dp).clickable { viewModel.refreshDiagnostics() },
-                )
             }
         }
         item { SectionTitle(stringResource(R.string.settings_about_section)) }

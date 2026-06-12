@@ -6,9 +6,6 @@ import java.lang.reflect.Proxy
 class FrplibBridge {
     private var cachedFrplibClass: Class<*>? = null
 
-    val isAvailable: Boolean
-        get() = frplibClass() != null
-
     fun configureTempDir(directory: File): String =
         if ((directory.exists() || directory.mkdirs()) && directory.isDirectory) {
             invokeString("setTempDir", directory.absolutePath)

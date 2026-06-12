@@ -525,8 +525,6 @@ private class FakeRuntime(
     var listInstancesCalls = 0
     var logSink: FrpLogSink? = null
 
-    override val isNativeAvailable: Boolean = true
-
     override fun configureTempDir(directory: File): FrpResult = tempDirResult
     override fun validateToml(toml: String): FrpResult = validateResult
     override fun tlsFilePaths(toml: String): List<String> = tlsFilePathsResult
