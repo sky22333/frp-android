@@ -1,13 +1,9 @@
 package com.sky22333.frpandroid.feature.dashboard
 
-import android.Manifest
 import android.app.Application
 import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -57,6 +53,7 @@ import com.sky22333.frpandroid.core.frp.FrpProfile
 import com.sky22333.frpandroid.core.frp.FrpRuntimeState
 import com.sky22333.frpandroid.core.frp.FrpType
 import com.sky22333.frpandroid.core.runtime.FrpForegroundService
+import com.sky22333.frpandroid.core.runtime.FrpRuntimePermissions
 import com.sky22333.frpandroid.core.ui.ErrorText
 import com.sky22333.frpandroid.core.ui.FrpListRow
 import com.sky22333.frpandroid.core.ui.SectionTitle
@@ -195,14 +192,14 @@ fun DashboardScreen(
     val failed = state.states.count { it.state == FrpInstanceStatus.Failed }
     var pendingStartProfile by remember { mutableStateOf<FrpProfile?>(null) }
     var pendingRuntimeAction by remember { mutableStateOf<PendingRuntimeAction?>(null) }
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted ->
+    val runtimePermissionsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { result ->
         val profile = pendingStartProfile
         val action = pendingRuntimeAction
         pendingStartProfile = null
         pendingRuntimeAction = null
-        if (granted && profile != null) {
+        if (profile != null && result.values.all { it }) {
             when (action) {
                 PendingRuntimeAction.Restart -> viewModel.restart(context, profile)
                 else -> viewModel.start(context, profile)
@@ -210,10 +207,9 @@ fun DashboardScreen(
         }
     }
 
-    fun runWithNotificationPermission(profile: FrpProfile, action: PendingRuntimeAction) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-        ) {
+    fun runWithRuntimePermissions(profile: FrpProfile, action: PendingRuntimeAction) {
+        val missing = FrpRuntimePermissions.missingPermissions(context)
+        if (missing.isEmpty()) {
             when (action) {
                 PendingRuntimeAction.Start -> viewModel.start(context, profile)
                 PendingRuntimeAction.Restart -> viewModel.restart(context, profile)
@@ -221,7 +217,7 @@ fun DashboardScreen(
         } else {
             pendingStartProfile = profile
             pendingRuntimeAction = action
-            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            runtimePermissionsLauncher.launch(missing)
         }
     }
 
@@ -288,9 +284,9 @@ fun DashboardScreen(
                 profile = profile,
                 state = runtimeState,
                 busy = profile.id in state.busyProfileIds,
-                onStart = { runWithNotificationPermission(profile, PendingRuntimeAction.Start) },
+                onStart = { runWithRuntimePermissions(profile, PendingRuntimeAction.Start) },
                 onStop = { viewModel.stop(context, profile) },
-                onRestart = { runWithNotificationPermission(profile, PendingRuntimeAction.Restart) },
+                onRestart = { runWithRuntimePermissions(profile, PendingRuntimeAction.Restart) },
             )
         }
     }
@@ -404,3 +400,4 @@ private fun ProfileRuntimeCard(
         },
     )
 }
+
