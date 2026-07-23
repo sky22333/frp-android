@@ -126,6 +126,12 @@ bash ci/validate-frplib.sh
 ./gradlew :app:assembleDebug
 ```
 
+Windows 本地可只用 PowerShell 编 AAR：
+
+```powershell
+.\ci\build-frplib.ps1
+```
+
 上游 frp 版本锁定在 `frplib/go.mod`。可选升级：
 
 ```bash

@@ -9,17 +9,27 @@ frp 的 Android AAR 绑定（gomobile），与本仓库 App 同仓维护。
 在仓库根目录：
 
 ```bash
+# Linux / macOS / Git Bash
 bash ci/build-frplib.sh
+```
+
+```powershell
+# Windows PowerShell（本地开发）
+.\ci\build-frplib.ps1
 ```
 
 产物：`app/libs/frplib-universal.aar`（已在 `.gitignore`）。
 
-需要：Go、Android SDK/NDK、`gomobile`。CI 中由 `android-release.yml` 自动执行。
+需要：Go、Android SDK/NDK、官方 `gomobile`（`golang.org/x/mobile`）。CI 中由 `android-release.yml` 自动执行。
 
 可选锁定/升级上游 frp：
 
 ```bash
 FRP_VERSION=v0.70.1 bash ci/build-frplib.sh
+```
+
+```powershell
+$env:FRP_VERSION = "v0.70.1"; .\ci\build-frplib.ps1
 ```
 
 ## 测试

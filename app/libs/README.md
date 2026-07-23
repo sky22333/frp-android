@@ -12,4 +12,8 @@ app/libs/frplib-universal.aar
 bash ci/build-frplib.sh
 ```
 
+```powershell
+.\ci\build-frplib.ps1
+```
+
 该文件已 gitignore；CI 在打包 APK 前会自动生成。App 的 ABI splits 会在打包时从 universal AAR 中筛选对应 `.so`。
