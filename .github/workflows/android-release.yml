@@ -37,7 +37,7 @@ jobs:
       - name: 安装 Go
         uses: actions/setup-go@v7
         with:
-          go-version-file: 'frplib/go.sum'
+          go-version-file: 'frplib/go.mod'
           cache-dependency-path: frplib/go.sum
 
       - name: 安装 Android SDK
