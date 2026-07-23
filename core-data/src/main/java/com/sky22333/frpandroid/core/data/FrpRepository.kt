@@ -52,7 +52,6 @@ class FrpRepository(
     private var logConsumerJob: Job? = null
     private var logsSinceTrim = 0
     private var initialized = false
-    private var runtimeInitResult = FrpResult(code = null, message = "")
 
     init {
         startLogConsumer()
@@ -80,14 +79,12 @@ class FrpRepository(
         level: String? = null,
         keyword: String? = null,
         limit: Int = 200,
-        offset: Int = 0,
     ): Flow<List<FrpLog>> = dao.observeLogs(
         instanceId = instanceId?.ifBlank { null },
         type = type?.ifBlank { null },
         level = level?.ifBlank { null },
         keyword = keyword?.ifBlank { null },
         limit = limit,
-        offset = offset,
     ).map { entities -> entities.map { it.toModel() } }
 
     suspend fun upsertProfile(profile: FrpProfile) {
@@ -263,30 +260,7 @@ class FrpRepository(
         val ready = ensureRuntimeReady()
         val tlsFilesReady = if (ready.isSuccess) validateManagedTlsFiles(profile) else ready
         val result = if (tlsFilesReady.isSuccess) runtimeManager.start(profile) else tlsFilesReady
-        when {
-            result.isSuccess || result.isAlreadyRunning -> {
-                dao.upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null).toEntity())
-            }
-            result.isTlsFileMissing -> {
-                dao.upsertRuntimeState(
-                    FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Stopped, result.message).toEntity(),
-                )
-            }
-            result.isInvalidToml -> {
-                // Validation-only failure: do not clobber an existing Running row.
-                val current = dao.getRuntimeStates().firstOrNull { it.id == profile.id }
-                if (current == null) {
-                    dao.upsertRuntimeState(
-                        FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Stopped, result.message).toEntity(),
-                    )
-                }
-            }
-            else -> {
-                dao.upsertRuntimeState(
-                    FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Failed, result.message.ifBlank { null }).toEntity(),
-                )
-            }
-        }
+        persistLifecycleState(profile, result, createStoppedOnInvalidToml = true)
         return result
     }
 
@@ -301,6 +275,15 @@ class FrpRepository(
         val ready = ensureRuntimeReady()
         val tlsFilesReady = if (ready.isSuccess) validateManagedTlsFiles(profile) else ready
         val result = if (tlsFilesReady.isSuccess) runtimeManager.reload(profile) else tlsFilesReady
+        persistLifecycleState(profile, result, createStoppedOnInvalidToml = false)
+        return result
+    }
+
+    private suspend fun persistLifecycleState(
+        profile: FrpProfile,
+        result: FrpResult,
+        createStoppedOnInvalidToml: Boolean,
+    ) {
         when {
             result.isSuccess || result.isAlreadyRunning -> {
                 dao.upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null).toEntity())
@@ -310,14 +293,22 @@ class FrpRepository(
                     FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Stopped, result.message).toEntity(),
                 )
             }
-            result.isInvalidToml -> Unit
+            result.isInvalidToml -> {
+                // Validation-only: never clobber an existing Running row.
+                if (!createStoppedOnInvalidToml) return
+                val current = dao.getRuntimeStates().firstOrNull { it.id == profile.id }
+                if (current == null) {
+                    dao.upsertRuntimeState(
+                        FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Stopped, result.message).toEntity(),
+                    )
+                }
+            }
             else -> {
                 dao.upsertRuntimeState(
                     FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Failed, result.message.ifBlank { null }).toEntity(),
                 )
             }
         }
-        return result
     }
 
     suspend fun pruneLogs(retentionDays: Int) {
@@ -358,7 +349,6 @@ class FrpRepository(
             if (initialized) return@withLock FrpResult(code = null, message = "")
 
             val tempDirResult = runtimeManager.configureTempDir(appCacheDir)
-            runtimeInitResult = tempDirResult
             if (!tempDirResult.isSuccess) {
                 appendLog(FrpLog("", "frp", "error", tempDirResult.message, System.currentTimeMillis()))
                 return@withLock tempDirResult

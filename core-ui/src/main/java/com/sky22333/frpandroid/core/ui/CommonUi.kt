@@ -25,18 +25,14 @@ import androidx.compose.ui.unit.dp
 fun SectionTitle(
     title: String,
     modifier: Modifier = Modifier,
-    action: @Composable (() -> Unit)? = null,
 ) {
-    Row(
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleLarge,
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(text = title, style = MaterialTheme.typography.titleLarge)
-        if (action != null) action()
-    }
+    )
 }
 
 @Composable

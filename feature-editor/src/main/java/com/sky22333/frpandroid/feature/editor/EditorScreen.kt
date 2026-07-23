@@ -1,13 +1,10 @@
 package com.sky22333.frpandroid.feature.editor
 
-import android.Manifest
 import android.app.Application
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
@@ -52,7 +49,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
@@ -61,6 +57,7 @@ import com.sky22333.frpandroid.core.data.TlsFileInfo
 import com.sky22333.frpandroid.core.data.TlsFileRole
 import com.sky22333.frpandroid.core.frp.FrpProfile
 import com.sky22333.frpandroid.core.runtime.FrpForegroundService
+import com.sky22333.frpandroid.core.runtime.FrpRuntimePermissions
 import com.sky22333.frpandroid.core.ui.ErrorText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -227,10 +224,10 @@ fun EditorScreen(
     var tlsDialog by remember { mutableStateOf(false) }
     var pendingTlsUri by remember { mutableStateOf<Uri?>(null) }
     var deleteTlsRole by remember { mutableStateOf<TlsFileRole?>(null) }
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        if (granted && pendingSaveRestart) {
+    val runtimePermissionsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { result ->
+        if (result.values.all { it } && pendingSaveRestart) {
             viewModel.saveAndRestart(context)
         }
         pendingSaveRestart = false
@@ -240,13 +237,12 @@ fun EditorScreen(
     }
 
     fun saveAndRestartWithPermission() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-        ) {
+        val missing = FrpRuntimePermissions.missingPermissions(context)
+        if (missing.isEmpty()) {
             viewModel.saveAndRestart(context)
         } else {
             pendingSaveRestart = true
-            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            runtimePermissionsLauncher.launch(missing)
         }
     }
 

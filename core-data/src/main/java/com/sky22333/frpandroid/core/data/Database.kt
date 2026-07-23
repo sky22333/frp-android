@@ -113,7 +113,7 @@ interface FrpDao {
         AND (:level IS NULL OR level = :level)
         AND (:keyword IS NULL OR message LIKE '%' || :keyword || '%')
         ORDER BY time DESC
-        LIMIT :limit OFFSET :offset
+        LIMIT :limit
         """,
     )
     fun observeLogs(
@@ -122,7 +122,6 @@ interface FrpDao {
         level: String?,
         keyword: String?,
         limit: Int,
-        offset: Int,
     ): Flow<List<FrpLogEntity>>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)

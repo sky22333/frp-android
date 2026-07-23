@@ -634,8 +634,7 @@ private class FakeFrpDao(
         level: String?,
         keyword: String?,
         limit: Int,
-        offset: Int,
-    ): Flow<List<FrpLogEntity>> = flowOf(logs.drop(offset).take(limit))
+    ): Flow<List<FrpLogEntity>> = flowOf(logs.take(limit))
 
     override suspend fun insertLogs(logs: List<FrpLogEntity>) {
         if (logInsertDelayMs > 0) delay(logInsertDelayMs)

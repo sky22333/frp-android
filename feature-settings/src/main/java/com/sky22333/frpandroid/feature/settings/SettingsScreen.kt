@@ -376,7 +376,7 @@ private fun openNotificationSettings(context: Context) {
 }
 
 private fun openBatterySettings(context: Context) {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !isIgnoringBatteryOptimizations(context)) {
+    if (!isIgnoringBatteryOptimizations(context)) {
         val requestIntent = Intent(AndroidSettings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
             .setData(Uri.parse("package:${context.packageName}"))
         runCatching {
@@ -408,7 +408,6 @@ private fun openProjectPage(context: Context) {
 }
 
 private fun isIgnoringBatteryOptimizations(context: Context): Boolean {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
     val powerManager = context.getSystemService(PowerManager::class.java)
     return powerManager.isIgnoringBatteryOptimizations(context.packageName)
 }

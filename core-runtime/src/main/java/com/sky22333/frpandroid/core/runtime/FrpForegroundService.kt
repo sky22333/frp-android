@@ -61,6 +61,11 @@ class FrpForegroundService : Service() {
                 if (!promoteToForegroundOrAbort()) return START_NOT_STICKY
                 startProfile(id)
             }
+            ACTION_RESTART_PROFILE -> {
+                val id = intent.getStringExtra(EXTRA_PROFILE_ID) ?: return START_NOT_STICKY
+                if (!promoteToForegroundOrAbort()) return START_NOT_STICKY
+                restartProfile(id)
+            }
             ACTION_RECOVER_PROFILE -> {
                 val id = intent.getStringExtra(EXTRA_PROFILE_ID) ?: return START_NOT_STICKY
                 val attempt = intent.getIntExtra(EXTRA_RECOVERY_ATTEMPT, 0)
@@ -103,6 +108,33 @@ class FrpForegroundService : Service() {
         scope.launch {
             FrpRetryWorker.cancel(this@FrpForegroundService, id)
             repository.getProfile(id)?.let { profile ->
+                val result = repository.start(profile)
+                if (FrpRuntimePolicy.isStartSatisfied(result)) {
+                    FrpRetryWorker.cancel(this@FrpForegroundService, profile.id)
+                    repository.setPendingStart(false)
+                }
+                if (FrpRuntimePolicy.shouldRetryStart(result, repository.shouldAutoRetryFailures())) {
+                    FrpRetryWorker.enqueue(
+                        this@FrpForegroundService,
+                        profile.id,
+                        attempt = 1,
+                        reason = RecoveryReason.AutoRetry,
+                    )
+                }
+            }
+            refreshNotificationOrStop()
+        }
+    }
+
+    private fun restartProfile(id: String) {
+        scope.launch {
+            FrpRetryWorker.cancel(this@FrpForegroundService, id)
+            val profile = repository.getProfile(id) ?: run {
+                refreshNotificationOrStop()
+                return@launch
+            }
+            val stopResult = repository.stop(profile)
+            if (stopResult.isSuccess || stopResult.isAlreadyStopped) {
                 val result = repository.start(profile)
                 if (FrpRuntimePolicy.isStartSatisfied(result)) {
                     FrpRetryWorker.cancel(this@FrpForegroundService, profile.id)
@@ -399,13 +431,13 @@ class FrpForegroundService : Service() {
     }
 
     private fun pendingIntentFlags(): Int =
-        PendingIntent.FLAG_UPDATE_CURRENT or
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 
     companion object {
         const val CHANNEL_ID = "frp_runtime"
         const val NOTIFICATION_ID = 22333
         const val ACTION_START_PROFILE = "com.sky22333.frpandroid.START_PROFILE"
+        const val ACTION_RESTART_PROFILE = "com.sky22333.frpandroid.RESTART_PROFILE"
         const val ACTION_RECOVER_PROFILE = "com.sky22333.frpandroid.RECOVER_PROFILE"
         const val ACTION_STOP_PROFILE = "com.sky22333.frpandroid.STOP_PROFILE"
         const val ACTION_STOP_ALL = "com.sky22333.frpandroid.STOP_ALL"
@@ -420,6 +452,13 @@ class FrpForegroundService : Service() {
         fun startProfile(context: Context, profileId: String) {
             val intent = Intent(context, FrpForegroundService::class.java)
                 .setAction(ACTION_START_PROFILE)
+                .putExtra(EXTRA_PROFILE_ID, profileId)
+            startRuntimeService(context, intent)
+        }
+
+        fun restartProfile(context: Context, profileId: String) {
+            val intent = Intent(context, FrpForegroundService::class.java)
+                .setAction(ACTION_RESTART_PROFILE)
                 .putExtra(EXTRA_PROFILE_ID, profileId)
             startRuntimeService(context, intent)
         }

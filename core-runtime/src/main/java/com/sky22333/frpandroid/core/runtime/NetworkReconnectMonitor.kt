@@ -3,9 +3,6 @@ package com.sky22333.frpandroid.core.runtime
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
-import android.net.NetworkCapabilities
-import android.net.NetworkRequest
-import android.os.Build
 import android.os.SystemClock
 import com.sky22333.frpandroid.core.data.AppGraph
 import kotlinx.coroutines.CoroutineScope
@@ -31,14 +28,7 @@ class NetworkReconnectMonitor private constructor(
                 scope.launch { reconnectRunningProfiles() }
             }
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            manager.registerDefaultNetworkCallback(callback)
-        } else {
-            val request = NetworkRequest.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build()
-            manager.registerNetworkCallback(request, callback)
-        }
+        manager.registerDefaultNetworkCallback(callback)
         registered = true
     }
 

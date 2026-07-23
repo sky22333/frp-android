@@ -158,19 +158,11 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     fun restart(context: Context, profile: FrpProfile) {
         if (!markBusy(profile.id)) return
         actionError.value = null
-        viewModelScope.launch {
-            val result = repository.stop(profile)
-            if (result.isSuccess) {
-                runCatching {
-                    FrpForegroundService.startProfile(context, profile.id)
-                }.onFailure {
-                    actionError.value = it.message
-                    busyProfileIds.update { busy -> busy - profile.id }
-                }
-            } else {
-                actionError.value = result.message
-                busyProfileIds.update { it - profile.id }
-            }
+        runCatching {
+            FrpForegroundService.restartProfile(context, profile.id)
+        }.onFailure {
+            actionError.value = it.message
+            busyProfileIds.update { it - profile.id }
         }
     }
 
