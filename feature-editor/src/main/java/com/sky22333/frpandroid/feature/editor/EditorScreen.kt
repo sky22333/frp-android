@@ -63,7 +63,9 @@ import com.sky22333.frpandroid.core.data.TlsFileRole
 import com.sky22333.frpandroid.core.frp.FrpProfile
 import com.sky22333.frpandroid.core.runtime.FrpForegroundService
 import com.sky22333.frpandroid.core.runtime.FrpRuntimePermissions
+import com.sky22333.frpandroid.core.ui.EmptyState
 import com.sky22333.frpandroid.core.ui.ErrorText
+import com.sky22333.frpandroid.core.ui.FrpUiTokens
 import com.sky22333.frpandroid.core.ui.ProfileCardTransformMs
 import com.sky22333.frpandroid.core.ui.profileCardSharedBounds
 import kotlinx.coroutines.Dispatchers
@@ -284,14 +286,14 @@ fun EditorScreen(
                 .background(MaterialTheme.colorScheme.background),
         )
         if (state.profile == null) {
-            Text(stringResource(R.string.editor_profile_missing), modifier = Modifier.padding(16.dp))
+            EmptyState(text = stringResource(R.string.editor_profile_missing))
             return@Box
         }
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .padding(FrpUiTokens.ScreenPadding)
                 .graphicsLayer { alpha = contentAlpha },
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {

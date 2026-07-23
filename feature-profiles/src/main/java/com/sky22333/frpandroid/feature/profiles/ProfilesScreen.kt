@@ -45,7 +45,9 @@ import com.sky22333.frpandroid.core.frp.FrpProfile
 import com.sky22333.frpandroid.core.frp.FrpType
 import com.sky22333.frpandroid.core.runtime.FrpRetryWorker
 import com.sky22333.frpandroid.core.ui.ErrorText
+import com.sky22333.frpandroid.core.ui.EmptyState
 import com.sky22333.frpandroid.core.ui.FrpListRow
+import com.sky22333.frpandroid.core.ui.FrpUiTokens
 import com.sky22333.frpandroid.core.ui.profileCardSharedBounds
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -150,8 +152,8 @@ fun ProfilesScreen(
 
     Column(Modifier.fillMaxSize()) {
         Row(
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(FrpUiTokens.ScreenPadding).fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(FrpUiTokens.ListSpacing),
         ) {
             Button(onClick = { newDialog = true }, modifier = Modifier.weight(1f)) {
                 Text(stringResource(R.string.profiles_new))
@@ -162,24 +164,24 @@ fun ProfilesScreen(
         }
 
         if (profiles.isEmpty()) {
-            Text(stringResource(R.string.profiles_empty), modifier = Modifier.padding(16.dp))
+            EmptyState(text = stringResource(R.string.profiles_empty))
         }
         error?.let { message ->
             ErrorText(
                 text = message,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.padding(horizontal = FrpUiTokens.ScreenPadding, vertical = FrpUiTokens.ListSpacing),
             )
         }
 
         LazyColumn(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(FrpUiTokens.ListSpacing),
         ) {
             items(profiles, key = { it.id }) { profile ->
                 val busy = profile.id in busyProfileIds
                 FrpListRow(
                     modifier = Modifier
-                        .padding(horizontal = 16.dp)
+                        .padding(horizontal = FrpUiTokens.ScreenPadding)
                         .profileCardSharedBounds(profile.id)
                         .clickable(enabled = !busy) { onEditProfile(profile.id) },
                     icon = if (profile.type == FrpType.Client) Icons.Rounded.CloudSync else Icons.Rounded.Dns,
@@ -193,7 +195,6 @@ fun ProfilesScreen(
                             },
                         )
                     }",
-                    statusRunning = profile.autoStart,
                     trailing = {
                         Row {
                             Switch(

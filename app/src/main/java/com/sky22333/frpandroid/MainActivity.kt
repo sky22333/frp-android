@@ -16,12 +16,14 @@ import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.automirrored.rounded.Article
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Dashboard
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -131,6 +133,14 @@ private fun FrpApp(startDestination: String?) {
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
     val showBottomBar = Screen.topLevel.any { it.route == currentRoute }
+    val isEditor = currentRoute?.startsWith("editor/") == true
+    val topBarTitleRes = when (currentRoute) {
+        Screen.Dashboard.route -> R.string.nav_dashboard
+        Screen.Profiles.route -> R.string.nav_profiles
+        Screen.Logs.route -> R.string.nav_logs
+        Screen.Settings.route -> R.string.nav_settings
+        else -> if (isEditor) R.string.editor_screen_title else R.string.app_title
+    }
     LaunchedEffect(startDestination) {
         if (startDestination == FrpForegroundService.DESTINATION_LOGS) {
             navController.navigate(Screen.Logs.route) {
@@ -142,7 +152,17 @@ private fun FrpApp(startDestination: String?) {
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.app_title)) },
+                title = { Text(stringResource(topBarTitleRes)) },
+                navigationIcon = {
+                    if (isEditor) {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(
+                                Icons.AutoMirrored.Rounded.ArrowBack,
+                                contentDescription = stringResource(R.string.navigate_back),
+                            )
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     scrolledContainerColor = MaterialTheme.colorScheme.background,

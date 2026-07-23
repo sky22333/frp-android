@@ -43,6 +43,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.sky22333.frpandroid.core.data.AppGraph
 import com.sky22333.frpandroid.core.frp.FrpLog
+import com.sky22333.frpandroid.core.ui.EmptyState
+import com.sky22333.frpandroid.core.ui.FrpUiTokens
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -155,21 +157,23 @@ fun LogsScreen(
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             Column(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.padding(horizontal = FrpUiTokens.ScreenPadding, vertical = FrpUiTokens.ListSpacing),
+                verticalArrangement = Arrangement.spacedBy(FrpUiTokens.ListSpacing),
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = state.filter.instanceId,
-                        onValueChange = viewModel::setInstanceId,
-                        label = { Text(stringResource(R.string.logs_instance)) },
-                        modifier = Modifier.weight(1f),
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(FrpUiTokens.ListSpacing)) {
                     OutlinedTextField(
                         value = state.filter.keyword,
                         onValueChange = viewModel::setKeyword,
                         label = { Text(stringResource(R.string.logs_keyword)) },
                         modifier = Modifier.weight(1f),
+                        singleLine = true,
+                    )
+                    OutlinedTextField(
+                        value = state.filter.instanceId,
+                        onValueChange = viewModel::setInstanceId,
+                        label = { Text(stringResource(R.string.logs_instance)) },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
                     )
                 }
                 FlowRow(
@@ -183,16 +187,11 @@ fun LogsScreen(
                             label = { Text(type.ifBlank { stringResource(R.string.logs_all) }) },
                         )
                     }
-                }
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    listOf("", "info", "warn", "error").forEach { level ->
+                    listOf("info", "warn", "error").forEach { level ->
                         FilterChip(
                             selected = state.filter.level == level,
-                            onClick = { viewModel.setLevel(level) },
-                            label = { Text(level.ifBlank { stringResource(R.string.logs_all) }) },
+                            onClick = { viewModel.setLevel(if (state.filter.level == level) "" else level) },
+                            label = { Text(level) },
                         )
                     }
                 }
@@ -230,7 +229,7 @@ fun LogsScreen(
                 }
             }
             if (state.logs.isEmpty()) {
-                Text(stringResource(R.string.logs_empty), modifier = Modifier.padding(16.dp))
+                EmptyState(text = stringResource(R.string.logs_empty))
             }
             LazyColumn(
                 modifier = Modifier.fillMaxWidth().weight(1f),
@@ -241,7 +240,7 @@ fun LogsScreen(
                     contentType = { _, _ -> "log" },
                 ) { _, log ->
                     Column(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(horizontal = FrpUiTokens.ScreenPadding, vertical = 6.dp),
                     ) {
                         Text(text = log.message, style = MaterialTheme.typography.bodyMedium)
                         Text(

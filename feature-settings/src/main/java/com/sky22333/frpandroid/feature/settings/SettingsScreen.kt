@@ -9,6 +9,7 @@ import android.os.PowerManager
 import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,11 +22,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BatterySaver
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PowerSettingsNew
-import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.ScreenLockPortrait
+import androidx.compose.material.icons.rounded.TipsAndUpdates
+import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -56,6 +61,7 @@ import com.sky22333.frpandroid.core.runtime.FrpForegroundService
 import com.sky22333.frpandroid.core.runtime.FrpRetryWorker
 import com.sky22333.frpandroid.core.runtime.RecoveryReason
 import com.sky22333.frpandroid.core.ui.FrpListRow
+import com.sky22333.frpandroid.core.ui.FrpUiTokens
 import com.sky22333.frpandroid.core.ui.SectionTitle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -127,7 +133,10 @@ fun SettingsScreen(
     var seedDialog by remember { mutableStateOf(false) }
     var languageDialog by remember { mutableStateOf(false) }
 
-    LazyColumn(Modifier.fillMaxSize()) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(FrpUiTokens.ListSpacing),
+    ) {
         if (settings.pendingStart) {
             item {
                 FrpListRow(
@@ -135,7 +144,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_pending_start),
                     subtitle = stringResource(R.string.settings_pending_start_hint),
                     statusRunning = true,
-                    modifier = Modifier.padding(horizontal = 16.dp).clickable { viewModel.recoverPendingStart(context) },
+                    modifier = Modifier.padding(horizontal = FrpUiTokens.ScreenPadding).clickable { viewModel.recoverPendingStart(context) },
                 )
             }
         }
@@ -150,7 +159,7 @@ fun SettingsScreen(
         }
         item {
             ToggleItem(
-                icon = Icons.Rounded.PowerSettingsNew,
+                icon = Icons.Rounded.Wifi,
                 title = stringResource(R.string.settings_network_reconnect),
                 checked = settings.networkReconnectEnabled,
                 onChange = viewModel::setNetworkReconnect,
@@ -158,7 +167,7 @@ fun SettingsScreen(
         }
         item {
             ToggleItem(
-                icon = Icons.Rounded.PowerSettingsNew,
+                icon = Icons.Rounded.Refresh,
                 title = stringResource(R.string.settings_auto_retry),
                 checked = settings.autoRetryEnabled,
                 onChange = viewModel::setAutoRetry,
@@ -166,7 +175,7 @@ fun SettingsScreen(
         }
         item {
             ToggleItem(
-                icon = Icons.Rounded.PowerSettingsNew,
+                icon = Icons.Rounded.ScreenLockPortrait,
                 title = stringResource(R.string.settings_screen_off_keep_alive),
                 checked = settings.screenOffKeepAliveEnabled,
                 onChange = viewModel::setScreenOffKeepAlive,
@@ -183,16 +192,15 @@ fun SettingsScreen(
                         R.string.settings_battery_restricted
                     },
                 ),
-                statusRunning = isIgnoringBatteryOptimizations(context),
-                modifier = Modifier.padding(horizontal = 16.dp).clickable { openBatterySettings(context) },
+                modifier = Modifier.padding(horizontal = FrpUiTokens.ScreenPadding).clickable { openBatterySettings(context) },
             )
         }
         item {
             FrpListRow(
-                icon = Icons.Rounded.PowerSettingsNew,
+                icon = Icons.Rounded.TipsAndUpdates,
                 title = stringResource(R.string.settings_autostart_guide),
                 subtitle = stringResource(R.string.settings_autostart_guide_hint),
-                modifier = Modifier.padding(horizontal = 16.dp).clickable { openAppDetails(context) },
+                modifier = Modifier.padding(horizontal = FrpUiTokens.ScreenPadding).clickable { openAppDetails(context) },
             )
         }
         item {
@@ -200,7 +208,7 @@ fun SettingsScreen(
                 icon = Icons.Rounded.Notifications,
                 title = stringResource(R.string.settings_notifications),
                 subtitle = stringResource(R.string.settings_notifications_hint),
-                modifier = Modifier.padding(horizontal = 16.dp).clickable { openNotificationSettings(context) },
+                modifier = Modifier.padding(horizontal = FrpUiTokens.ScreenPadding).clickable { openNotificationSettings(context) },
             )
         }
         item { SectionTitle(stringResource(R.string.settings_appearance_section)) }
@@ -209,28 +217,28 @@ fun SettingsScreen(
                 icon = Icons.Rounded.Palette,
                 title = stringResource(R.string.settings_theme_seed),
                 subtitle = themeSeedLabel(settings.themeSeedColor),
-                modifier = Modifier.padding(horizontal = 16.dp).clickable { seedDialog = true },
+                modifier = Modifier.padding(horizontal = FrpUiTokens.ScreenPadding).clickable { seedDialog = true },
                 trailing = { SeedSwatch(settings.themeSeedColor) },
             )
         }
         item {
             FrpListRow(
-                icon = Icons.Rounded.Settings,
+                icon = Icons.Rounded.Language,
                 title = stringResource(R.string.settings_language),
                 subtitle = languageLabel(settings.languageMode),
-                modifier = Modifier.padding(horizontal = 16.dp).clickable { languageDialog = true },
+                modifier = Modifier.padding(horizontal = FrpUiTokens.ScreenPadding).clickable { languageDialog = true },
             )
         }
         item { SectionTitle(stringResource(R.string.settings_logs_section)) }
         item {
             Surface(
-                modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+                modifier = Modifier.padding(horizontal = FrpUiTokens.ScreenPadding).fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.surface,
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
                 tonalElevation = 0.dp,
                 shadowElevation = 0.dp,
             ) {
-                Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Column(Modifier.padding(horizontal = FrpUiTokens.ScreenPadding, vertical = 12.dp)) {
                     Text("${stringResource(R.string.settings_log_retention)}: ${settings.logRetentionDays}")
                     Slider(
                         value = settings.logRetentionDays.toFloat(),
@@ -247,7 +255,7 @@ fun SettingsScreen(
                 icon = Icons.Rounded.Info,
                 title = stringResource(R.string.settings_app_version),
                 subtitle = BuildConfig.APP_VERSION_NAME,
-                modifier = Modifier.padding(horizontal = 16.dp).clickable { openProjectPage(context) },
+                modifier = Modifier.padding(horizontal = FrpUiTokens.ScreenPadding).clickable { openProjectPage(context) },
             )
         }
         item {
@@ -255,7 +263,7 @@ fun SettingsScreen(
                 icon = Icons.Rounded.Memory,
                 title = stringResource(R.string.settings_kernel_version),
                 subtitle = kernelVersion ?: stringResource(R.string.settings_kernel_version_hint),
-                modifier = Modifier.padding(horizontal = 16.dp).clickable { viewModel.loadKernelVersion() },
+                modifier = Modifier.padding(horizontal = FrpUiTokens.ScreenPadding).clickable { viewModel.loadKernelVersion() },
             )
         }
     }
@@ -327,8 +335,7 @@ private fun ToggleItem(icon: ImageVector, title: String, checked: Boolean, onCha
         icon = icon,
         title = title,
         subtitle = stringResource(if (checked) R.string.settings_enabled else R.string.settings_disabled),
-        statusRunning = checked,
-        modifier = Modifier.padding(horizontal = 16.dp),
+        modifier = Modifier.padding(horizontal = FrpUiTokens.ScreenPadding),
         trailing = { Switch(checked = checked, onCheckedChange = onChange) },
     )
 }

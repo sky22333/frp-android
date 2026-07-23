@@ -19,7 +19,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+
+/** 全 App 列表统一节奏 */
+object FrpUiTokens {
+    val ScreenPadding: Dp = 16.dp
+    val ListSpacing: Dp = 8.dp
+}
 
 @Composable
 fun SectionTitle(
@@ -31,7 +38,20 @@ fun SectionTitle(
         style = MaterialTheme.typography.titleLarge,
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = FrpUiTokens.ScreenPadding, vertical = FrpUiTokens.ListSpacing),
+    )
+}
+
+@Composable
+fun EmptyState(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.padding(horizontal = FrpUiTokens.ScreenPadding, vertical = 24.dp),
     )
 }
 
@@ -42,13 +62,14 @@ fun FrpListRow(
     subtitle: String,
     modifier: Modifier = Modifier,
     status: String? = null,
+    /** 仅表示「运行中」等活动态，不要用于开关/权限已开启。 */
     statusRunning: Boolean = false,
     trailing: @Composable (() -> Unit)? = null,
 ) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {

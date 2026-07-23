@@ -5,4 +5,6 @@
     <string name="nav_logs">日志</string>
     <string name="nav_settings">设置</string>
     <string name="app_title">frp 控制台</string>
+    <string name="navigate_back">返回</string>
+    <string name="editor_screen_title">编辑配置</string>
 </resources>

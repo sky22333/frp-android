@@ -55,7 +55,9 @@ import com.sky22333.frpandroid.core.frp.FrpType
 import com.sky22333.frpandroid.core.runtime.FrpForegroundService
 import com.sky22333.frpandroid.core.runtime.FrpRuntimePermissions
 import com.sky22333.frpandroid.core.ui.ErrorText
+import com.sky22333.frpandroid.core.ui.EmptyState
 import com.sky22333.frpandroid.core.ui.FrpListRow
+import com.sky22333.frpandroid.core.ui.FrpUiTokens
 import com.sky22333.frpandroid.core.ui.SectionTitle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -215,7 +217,7 @@ fun DashboardScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(FrpUiTokens.ListSpacing),
     ) {
         item {
             TypeSelector(state.selectedType, viewModel::selectType)
@@ -224,7 +226,7 @@ fun DashboardScreen(
             item {
                 ErrorText(
                     text = error,
-                    modifier = Modifier.padding(horizontal = 16.dp),
+                    modifier = Modifier.padding(horizontal = FrpUiTokens.ScreenPadding),
                 )
             }
         }
@@ -239,8 +241,8 @@ fun DashboardScreen(
         }
         item {
             Row(
-                modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.padding(horizontal = FrpUiTokens.ScreenPadding).fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(FrpUiTokens.ListSpacing),
             ) {
                 FrpListRow(
                     icon = Icons.Rounded.Dns,
@@ -253,7 +255,6 @@ fun DashboardScreen(
                     icon = Icons.Rounded.PowerSettingsNew,
                     title = stringResource(R.string.dashboard_boot_start),
                     subtitle = if (state.settings.bootStartEnabled) stringResource(R.string.dashboard_enabled) else stringResource(R.string.dashboard_disabled),
-                    statusRunning = state.settings.bootStartEnabled,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -263,11 +264,7 @@ fun DashboardScreen(
         }
         if (state.profiles.isEmpty()) {
             item {
-                Text(
-                    text = stringResource(R.string.dashboard_no_profiles),
-                    modifier = Modifier.padding(16.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                EmptyState(text = stringResource(R.string.dashboard_no_profiles))
             }
         }
         items(state.profiles, key = { it.id }) { profile ->
@@ -286,7 +283,7 @@ fun DashboardScreen(
 
 @Composable
 private fun TypeSelector(selectedType: FrpType, onSelect: (FrpType) -> Unit) {
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.padding(FrpUiTokens.ScreenPadding).fillMaxWidth()) {
         SegmentedButton(
             selected = selectedType == FrpType.Client,
             onClick = { onSelect(FrpType.Client) },
@@ -313,9 +310,9 @@ private fun RuntimeOverviewCard(
     onStopAll: () -> Unit,
 ) {
     Surface(
-        modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+        modifier = Modifier.padding(horizontal = FrpUiTokens.ScreenPadding).fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
@@ -361,7 +358,7 @@ private fun ProfileRuntimeCard(
     val stopping = state?.state == FrpInstanceStatus.Stopping
     val lastError = state?.lastError
     FrpListRow(
-        modifier = Modifier.padding(horizontal = 16.dp),
+        modifier = Modifier.padding(horizontal = FrpUiTokens.ScreenPadding),
         icon = if (profile.type == FrpType.Client) Icons.Rounded.CloudSync else Icons.Rounded.Dns,
         title = profile.name,
         subtitle = "${profile.type.name.lowercase()} · ${state?.state?.name ?: FrpInstanceStatus.Stopped.name}",
