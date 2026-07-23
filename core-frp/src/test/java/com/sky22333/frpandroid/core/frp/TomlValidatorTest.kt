@@ -35,4 +35,20 @@ class TomlValidatorTest {
         assertEquals("INVALID_TOML", result.code)
         assertTrue(result.message.isNotBlank())
     }
+
+    @Test
+    fun suggestTypeDetectsClientAndServer() {
+        assertEquals(
+            FrpType.Client,
+            validator.suggestType(
+                """
+                serverAddr = "127.0.0.1"
+                serverPort = 7000
+                """.trimIndent(),
+            ),
+        )
+        assertEquals(FrpType.Server, validator.suggestType("bindPort = 7000"))
+        assertNull(validator.suggestType(""))
+        assertNull(validator.suggestType("serverAddr = "))
+    }
 }

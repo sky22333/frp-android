@@ -12,6 +12,19 @@ class TomlValidator {
         return FrpResult(code = "INVALID_TOML", message = message)
     }
 
+    fun suggestType(toml: String): FrpType? {
+        if (toml.isBlank()) return null
+        val result = Toml.parse(toml)
+        if (result.hasErrors()) return null
+        val client = CLIENT_KEYS.any(result::contains)
+        val server = SERVER_KEYS.any(result::contains)
+        return when {
+            client && !server -> FrpType.Client
+            server && !client -> FrpType.Server
+            else -> null
+        }
+    }
+
     fun tlsFilePaths(toml: String): List<String> {
         val result = Toml.parse(toml)
         if (result.hasErrors()) return emptyList()
@@ -20,5 +33,10 @@ class TomlValidator {
             "transport.tls.certFile",
             "transport.tls.keyFile",
         ).mapNotNull { key -> result.getString(key)?.ifBlank { null } }
+    }
+
+    private companion object {
+        val CLIENT_KEYS = listOf("serverAddr", "serverPort", "proxies", "visitors")
+        val SERVER_KEYS = listOf("bindPort", "bindAddr", "vhostHTTPPort", "vhostHTTPSPort")
     }
 }

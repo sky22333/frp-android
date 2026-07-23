@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -22,6 +23,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Switch
@@ -36,25 +38,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.size
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.sky22333.frpandroid.core.data.AppGraph
 import com.sky22333.frpandroid.core.frp.FrpProfile
 import com.sky22333.frpandroid.core.frp.FrpType
+import com.sky22333.frpandroid.core.frp.TomlValidator
 import com.sky22333.frpandroid.core.runtime.FrpRetryWorker
-import com.sky22333.frpandroid.core.ui.ErrorText
 import com.sky22333.frpandroid.core.ui.EmptyState
+import com.sky22333.frpandroid.core.ui.ErrorText
 import com.sky22333.frpandroid.core.ui.FrpListRow
 import com.sky22333.frpandroid.core.ui.FrpUiTokens
 import com.sky22333.frpandroid.core.ui.profileCardSharedBounds
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 class ProfilesViewModel(application: Application) : AndroidViewModel(application) {
@@ -66,6 +70,8 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
     val busyProfileIds: StateFlow<Set<String>> = mutableBusyProfileIds
     private val mutableError = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = mutableError
+    private val mutableImportDraft = MutableStateFlow<String?>(null)
+    val importDraft: StateFlow<String?> = mutableImportDraft
 
     fun create(type: FrpType, toml: String? = null) {
         val id = UUID.randomUUID().toString()
@@ -105,11 +111,23 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun importToml(uri: Uri) {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val toml = readToml(appContext, uri)
-            create(detectType(toml), toml)
+    fun openPasteImport() {
+        mutableImportDraft.value = ""
+    }
+
+    fun openFileImport(uri: Uri) {
+        viewModelScope.launch {
+            mutableImportDraft.value = withContext(Dispatchers.IO) { readToml(appContext, uri) }
         }
+    }
+
+    fun dismissImport() {
+        mutableImportDraft.value = null
+    }
+
+    fun confirmImport(type: FrpType, toml: String) {
+        create(type, toml)
+        dismissImport()
     }
 
     private fun defaultToml(type: FrpType): String =
@@ -140,14 +158,12 @@ fun ProfilesScreen(
     val profiles by viewModel.profiles.collectAsStateWithLifecycle()
     val busyProfileIds by viewModel.busyProfileIds.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
+    val importDraft by viewModel.importDraft.collectAsStateWithLifecycle()
     var newDialog by remember { mutableStateOf(false) }
     var importChoiceDialog by remember { mutableStateOf(false) }
-    var importDialog by remember { mutableStateOf(false) }
     var deleteCandidate by remember { mutableStateOf<FrpProfile?>(null) }
     val documentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) {
-            viewModel.importToml(uri)
-        }
+        if (uri != null) viewModel.openFileImport(uri)
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -244,19 +260,17 @@ fun ProfilesScreen(
                 },
                 stringResource(R.string.profiles_paste_import) to {
                     importChoiceDialog = false
-                    importDialog = true
+                    viewModel.openPasteImport()
                 },
             ),
         )
     }
 
-    if (importDialog) {
+    importDraft?.let { draft ->
         ImportTomlDialog(
-            onDismiss = { importDialog = false },
-            onImport = { type, toml ->
-                viewModel.create(type, toml)
-                importDialog = false
-            },
+            initialToml = draft,
+            onDismiss = viewModel::dismissImport,
+            onImport = viewModel::confirmImport,
         )
     }
 
@@ -314,30 +328,49 @@ private fun ProfileActionDialog(
 private fun readToml(context: Context, uri: Uri): String =
     context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }.orEmpty()
 
-private fun detectType(toml: String): FrpType =
-    if (toml.contains("bindPort") && !toml.contains("serverAddr")) FrpType.Server else FrpType.Client
-
 @Composable
 private fun ImportTomlDialog(
+    initialToml: String,
     onDismiss: () -> Unit,
     onImport: (FrpType, String) -> Unit,
 ) {
-    var toml by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf(FrpType.Client) }
+    val validator = remember { TomlValidator() }
+    var toml by remember(initialToml) { mutableStateOf(initialToml) }
+    var type by remember(initialToml) {
+        mutableStateOf(validator.suggestType(initialToml) ?: FrpType.Client)
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.profiles_import)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilledTonalButton(onClick = { type = FrpType.Client }) { Text("frpc") }
-                    FilledTonalButton(onClick = { type = FrpType.Server }) { Text("frps") }
+                    FilterChip(
+                        selected = type == FrpType.Client,
+                        onClick = { type = FrpType.Client },
+                        label = { Text("frpc") },
+                    )
+                    FilterChip(
+                        selected = type == FrpType.Server,
+                        onClick = { type = FrpType.Server },
+                        label = { Text("frps") },
+                    )
                 }
-                TextField(value = toml, onValueChange = { toml = it }, minLines = 8)
+                TextField(
+                    value = toml,
+                    onValueChange = { value ->
+                        toml = value
+                        validator.suggestType(value)?.let { type = it }
+                    },
+                    minLines = 8,
+                )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onImport(type, toml) }) {
+            TextButton(
+                onClick = { onImport(type, toml) },
+                enabled = toml.isNotBlank(),
+            ) {
                 Text(stringResource(R.string.profiles_import))
             }
         },
