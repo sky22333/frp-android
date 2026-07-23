@@ -10,4 +10,5 @@ feature-*/build/
 *.apk
 *.aab
 app/libs/frplib-universal.aar
+frplib/dist/
 gradle/gradle-daemon-jvm.properties

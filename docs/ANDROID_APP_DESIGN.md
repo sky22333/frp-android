@@ -1,16 +1,18 @@
 # frp Android App
 
-基于 `frplib` AAR 的 Android App 
-
-`frplib`仓库地址：https://github.com/sky22333/frplib
+基于同仓 `frplib`（gomobile AAR）的 Android App。内核源码在 `frplib/`，构建产物为 `app/libs/frplib-universal.aar`。
 
 ## 项目结构
 ```
 frp-android/
 ├─ .github/workflows/
-│  └─ android-release.yml        # GitHub Actions 发布流水线，下载 frplib、构建签名 Release、上传产物
+│  └─ android-release.yml        # 先 gomobile 构建 frplib，再签名 Release APK 并发布
+├─ frplib/                       # Go 内核封装（gomobile → AAR），与 App 同仓维护
+│  ├─ go.mod / go.sum            # 锁定上游 fatedier/frp 版本
+│  └─ *.go                       # start/stop/reload 多实例 API
 ├─ app/                          # Android 应用壳层，负责入口、导航、主题、语言切换
 │  ├─ build.gradle.kts           # app 模块 Gradle 配置、frplib 通用 AAR 依赖、ABI splits、签名、Compose 依赖
+│  ├─ libs/                      # frplib-universal.aar（gitignore，由 ci/build-frplib.sh 生成）
 │  └─ src/main/
 │     ├─ AndroidManifest.xml     # 应用声明、MainActivity、图标、主题
 │     ├─ java/.../frpandroid/
@@ -54,7 +56,7 @@ frp-android/
 ├─ feature-settings/             # 设置页面
 │  └─ SettingsScreen.kt          # 后台、自启、电池、主题配色、语言、应用版本、内核版本入口
 ├─ ci/                           # CI 辅助脚本
-│  ├─ download-frplib.sh         # 下载 sky22333/frplib Latest 通用 AAR
+│  ├─ build-frplib.sh            # gomobile 构建同仓 frplib → app/libs AAR
 │  ├─ validate-frplib.sh         # 校验 frplib AAR 和 gomobile API
 │  └─ collect-apks.sh            # 收集 Release APK 产物
 ├─ docs/                         # 文档和迭代记录
@@ -72,7 +74,7 @@ frp-android/
 
 ## 目标
 
-- 直接导入 `frplib` AAR，无需手写 JNI。
+- 同仓构建 `frplib` AAR，无需手写 JNI、无需外仓下载。
 - 支持官方 `frpc.toml` / `frps.toml`。
 - 支持单实例和多实例。
 - 支持启动、停止、Reload、StopAll。

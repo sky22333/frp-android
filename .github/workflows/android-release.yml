@@ -8,20 +8,25 @@ on:
         required: true
         default: v0.0.1
         type: string
+      frp_version:
+        description: 可选，覆盖上游 frp 版本（留空则使用 frplib/go.mod 锁定版本）
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: write
 
 jobs:
   build-release:
-    name: 下载依赖、测试、签名构建并发布
+    name: 构建 frplib、测试、签名构建并发布
     runs-on: ubuntu-latest
     env:
       APP_VERSION_NAME: ${{ inputs.tag }}
 
     steps:
       - name: 拉取源码
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: 配置 JDK
         uses: actions/setup-java@v5
@@ -29,16 +34,39 @@ jobs:
           distribution: temurin
           java-version: 21
 
+      - name: 安装 Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache-dependency-path: frplib/go.sum
+
+      - name: 安装 Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platforms;android-37.0 build-tools;37.0.0 platform-tools'
+
+      - name: 安装 Android NDK
+        run: |
+          sdkmanager --channel=0 --install "ndk;29.0.14206865"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/29.0.14206865" >> "$GITHUB_ENV"
+
+      - name: 安装 gomobile
+        run: |
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          gomobile init
+
+      - name: 构建 frplib universal AAR
+        env:
+          FRP_VERSION: ${{ inputs.frp_version }}
+        run: bash ci/build-frplib.sh
+
+      - name: 验收 frplib universal AAR
+        run: bash ci/validate-frplib.sh
+
       - name: 配置 Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 9.4.1
-
-      - name: 下载 frplib latest universal AAR
-        run: bash ci/download-frplib.sh
-
-      - name: 验收 frplib universal AAR
-        run: bash ci/validate-frplib.sh
 
       - name: 准备 PKCS#12 Release 签名文件
         env:

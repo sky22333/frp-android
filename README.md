@@ -115,6 +115,27 @@ remotePort = 8080
 
 ---
 
+## 开发构建
+
+本仓库已包含内核封装 `frplib/`（原独立仓库已迁入）。本地/CI 需先生成 AAR 再编 App：
+
+```bash
+# 需要 Go、Android SDK/NDK、gomobile
+bash ci/build-frplib.sh
+bash ci/validate-frplib.sh
+./gradlew :app:assembleDebug
+```
+
+上游 frp 版本锁定在 `frplib/go.mod`。可选升级：
+
+```bash
+FRP_VERSION=v0.70.0 bash ci/build-frplib.sh
+```
+
+详情见 [`frplib/README.md`](frplib/README.md)。
+
+---
+
 ## 支持架构
 
 | 架构          | 支持 |

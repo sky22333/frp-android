@@ -1,9 +1,15 @@
-Place the generated frplib universal AAR here.
+# frplib AAR
 
-Expected layout:
+将 gomobile 产物放在这里：
 
 ```text
 app/libs/frplib-universal.aar
 ```
 
-The app's ABI splits filter the native libraries from the universal AAR at packaging time.
+从仓库根目录构建：
+
+```bash
+bash ci/build-frplib.sh
+```
+
+该文件已 gitignore；CI 在打包 APK 前会自动生成。App 的 ABI splits 会在打包时从 universal AAR 中筛选对应 `.so`。
