@@ -64,8 +64,8 @@
 
 支持：
 
-* FRPC 配置
-* FRPS 配置
+* frpc 配置
+* frps 配置
 
 ---
 
@@ -112,44 +112,6 @@ remotePort = 8080
 
 * Android 7.0+
 * 推荐 Android 8+
-
----
-
-## 开发构建
-
-本仓库已包含内核封装 `frplib/`（原独立仓库已迁入）。本地/CI 需先生成 AAR 再编 App：
-
-```bash
-# 需要 Go、Android SDK/NDK、gomobile
-bash ci/build-frplib.sh
-bash ci/validate-frplib.sh
-./gradlew :app:assembleDebug
-```
-
-Windows 本地可只用 PowerShell 编 AAR：
-
-```powershell
-.\ci\build-frplib.ps1
-```
-
-上游 frp 版本锁定在 `frplib/go.mod`。可选升级：
-
-```bash
-FRP_VERSION=v0.70.1 bash ci/build-frplib.sh
-```
-
-详情见 [`frplib/README.md`](frplib/README.md)。
-
----
-
-## 支持架构
-
-| 架构          | 支持 |
-| ----------- | -- |
-| arm64-v8a   | ✅  |
-| armeabi-v7a | ✅  |
-| x86_64      | ✅  |
-| Universal   | ✅  |
 
 ---
 
