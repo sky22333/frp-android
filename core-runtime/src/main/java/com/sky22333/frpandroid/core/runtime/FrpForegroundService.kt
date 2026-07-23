@@ -80,20 +80,14 @@ class FrpForegroundService : Service() {
                 if (id != null) stopProfile(id)
             }
             ACTION_STOP_ALL -> stopAll()
-            ACTION_RESTORE_DESIRED -> {
-                if (!promoteToForegroundOrAbort()) return START_NOT_STICKY
-                restoreDesired()
-            }
+            ACTION_RESTORE_DESIRED -> restoreDesired()
             ACTION_MARK_PENDING_START -> {
                 scope.launch {
                     repository.setPendingStart(true)
                     stopSelf()
                 }
             }
-            else -> {
-                if (!promoteToForegroundOrAbort()) return START_NOT_STICKY
-                restoreDesired()
-            }
+            else -> restoreDesired()
         }
         return START_STICKY
     }
@@ -193,6 +187,13 @@ class FrpForegroundService : Service() {
 
     private fun restoreDesired() {
         scope.launch {
+            val desired = repository.getDesiredRunningProfiles()
+            if (desired.isEmpty()) {
+                repository.setPendingStart(false)
+                stopSelf()
+                return@launch
+            }
+            if (!promoteToForegroundOrAbort()) return@launch
             repository.restoreDesiredProfiles()
             refreshNotificationOrStop()
         }
@@ -474,8 +475,7 @@ class FrpForegroundService : Service() {
         }
 
         fun restoreDesired(context: Context) {
-            startRuntimeService(
-                context,
+            context.startService(
                 Intent(context, FrpForegroundService::class.java).setAction(ACTION_RESTORE_DESIRED),
             )
         }

@@ -38,7 +38,6 @@ data class FrpRuntimeStateEntity(
     val type: FrpType,
     val state: FrpInstanceStatus,
     val lastError: String?,
-    /** 是否仍应保持运行（仅由 start/stop 写入，不由 sync 推断）。 */
     val desiredRunning: Boolean = false,
 ) {
     fun toModel(): FrpRuntimeState = FrpRuntimeState(id, type, state, lastError)

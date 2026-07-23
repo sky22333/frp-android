@@ -142,7 +142,6 @@ class FrpRepository(
     suspend fun getAutoStartProfiles(): List<FrpProfile> =
         dao.getAutoStartProfiles().map { it.toModel() }
 
-    /** 用户仍希望运行的配置（进程死后恢复依据）。 */
     suspend fun getDesiredRunningProfiles(): List<FrpProfile> {
         val ids = dao.getDesiredRunningStates().map { it.id }.toSet()
         if (ids.isEmpty()) return emptyList()
@@ -183,10 +182,6 @@ class FrpRepository(
         return recovered.second
     }
 
-    /**
-     * 冷启动/粘性恢复：先对齐 native observed，再按 desiredRunning 重新拉起。
-     * @return 尝试恢复的配置数量
-     */
     suspend fun restoreDesiredProfiles(): Int {
         val ready = ensureRuntimeReady()
         if (!ready.isSuccess) return 0
