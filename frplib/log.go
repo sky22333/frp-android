@@ -20,7 +20,7 @@ var logBridge = struct {
 }{}
 
 func init() {
-	frplog.Logger = frplog.Logger.WithOptions(goliblog.WithOutput(androidLogWriter{}))
+	attachAndroidLogWriter()
 }
 
 func SetLogCallback(callback FrpLogCallback) {
@@ -44,6 +44,18 @@ func emitLog(instanceID, typ, level, message string) {
 	}
 
 	callback.OnLog(instanceID, typ, level, message)
+}
+
+func applyFrpLogger(to, level string, maxDays int) {
+	if to == "" {
+		to = "console"
+	}
+	frplog.InitLogger(to, level, maxDays, true)
+	attachAndroidLogWriter()
+}
+
+func attachAndroidLogWriter() {
+	frplog.Logger = frplog.Logger.WithOptions(goliblog.WithOutput(androidLogWriter{}))
 }
 
 type androidLogWriter struct{}

@@ -18,6 +18,8 @@ const (
 	stateStopping = "stopping"
 	stateStopped  = "stopped"
 	stateFailed   = "failed"
+
+	stopWaitTimeout = 3 * time.Second
 )
 
 var validIDPattern = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
@@ -29,8 +31,6 @@ type runningService interface {
 
 type serviceFactory func(string) (runningService, error)
 
-type configValidator func(string) error
-
 type instance struct {
 	id         string
 	typ        string
@@ -40,7 +40,6 @@ type instance struct {
 	cancel     context.CancelFunc
 	done       chan struct{}
 	service    runningService
-	stopping   bool
 }
 
 type manager struct {
@@ -100,6 +99,34 @@ func removeConfigTemp(path string) {
 	}
 }
 
+func isDone(done <-chan struct{}) bool {
+	select {
+	case <-done:
+		return true
+	default:
+		return false
+	}
+}
+
+// runAlive reports whether the instance goroutine has not finished yet.
+func (inst *instance) runAlive() bool {
+	return inst != nil && inst.done != nil && !isDone(inst.done)
+}
+
+// startBlocker returns an error if a new Start must be refused.
+func (inst *instance) startBlocker(typ, id string) error {
+	if inst == nil {
+		return nil
+	}
+	if inst.state == stateRunning || inst.state == stateStopping {
+		return newError(ErrAlreadyRunning, "%s instance %q is already running", typ, id)
+	}
+	if inst.runAlive() {
+		return newError(ErrStartFailed, "%s instance %q previous run is still shutting down", typ, id)
+	}
+	return nil
+}
+
 func (m *manager) start(typ, id, configToml string, factory serviceFactory) error {
 	if err := validateID(id); err != nil {
 		return err
@@ -108,9 +135,9 @@ func (m *manager) start(typ, id, configToml string, factory serviceFactory) erro
 	key := instanceKey(typ, id)
 
 	m.mu.Lock()
-	if current, ok := m.instances[key]; ok && current.state != stateStopped && current.state != stateFailed {
+	if err := m.instances[key].startBlocker(typ, id); err != nil {
 		m.mu.Unlock()
-		return newError(ErrAlreadyRunning, "%s instance %q is already running", typ, id)
+		return err
 	}
 	m.mu.Unlock()
 
@@ -119,20 +146,58 @@ func (m *manager) start(typ, id, configToml string, factory serviceFactory) erro
 		return err
 	}
 
+	// Build upstream service outside the manager lock (server.NewService may Listen).
+	service, err := factory(configPath)
+	if err != nil {
+		removeConfigTemp(configPath)
+		return err
+	}
+
+	if err := m.install(typ, id, configPath, service); err != nil {
+		_ = service.Close()
+		removeConfigTemp(configPath)
+		return err
+	}
+	return nil
+}
+
+// restart installs a service that was already validated. configPath ownership transfers on success.
+func (m *manager) restart(typ, id, configPath string, open func() (runningService, error)) error {
+	if err := validateID(id); err != nil {
+		return err
+	}
+
+	key := instanceKey(typ, id)
+	m.mu.Lock()
+	needsStop := m.instances[key].startBlocker(typ, id) != nil
+	m.mu.Unlock()
+
+	if needsStop {
+		if err := m.stop(typ, id); err != nil {
+			return err
+		}
+	}
+
+	service, err := open()
+	if err != nil {
+		return err
+	}
+	if err := m.install(typ, id, configPath, service); err != nil {
+		_ = service.Close()
+		return err
+	}
+	emitLog(id, typ, "info", "reloaded by safe restart")
+	return nil
+}
+
+func (m *manager) install(typ, id, configPath string, service runningService) error {
+	key := instanceKey(typ, id)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	m.mu.Lock()
-	if current, ok := m.instances[key]; ok && current.state != stateStopped && current.state != stateFailed {
+	if err := m.instances[key].startBlocker(typ, id); err != nil {
 		m.mu.Unlock()
 		cancel()
-		removeConfigTemp(configPath)
-		return newError(ErrAlreadyRunning, "%s instance %q is already running", typ, id)
-	}
-	service, err := factory(configPath)
-	if err != nil {
-		m.mu.Unlock()
-		cancel()
-		removeConfigTemp(configPath)
 		return err
 	}
 
@@ -149,21 +214,21 @@ func (m *manager) start(typ, id, configToml string, factory serviceFactory) erro
 	m.mu.Unlock()
 
 	emitLog(id, typ, "info", "started")
-
 	go m.run(key, inst, ctx)
-
 	return nil
 }
 
 func (m *manager) run(key string, inst *instance, ctx context.Context) {
 	err := inst.service.Run(ctx)
-	finalState := stateStopped
 
 	m.mu.Lock()
 	if current, ok := m.instances[key]; ok && current == inst {
 		switch {
 		case inst.state == stateFailed:
-		case inst.stopping:
+			if err != nil && inst.lastError == "" {
+				inst.lastError = err.Error()
+			}
+		case inst.state == stateStopping:
 			inst.state = stateStopped
 			inst.lastError = ""
 		case err != nil:
@@ -173,10 +238,10 @@ func (m *manager) run(key string, inst *instance, ctx context.Context) {
 			inst.state = stateStopped
 			inst.lastError = ""
 		}
-		finalState = inst.state
 		removeConfigTemp(inst.configPath)
 		inst.configPath = ""
 	}
+	finalState := inst.state
 	close(inst.done)
 	m.mu.Unlock()
 
@@ -197,83 +262,75 @@ func (m *manager) stop(typ, id string) error {
 
 	m.mu.Lock()
 	inst, ok := m.instances[key]
-	if !ok || inst.state == stateStopped || inst.state == stateStopping || inst.state == stateFailed {
+	if !ok || inst.state == stateStopped {
 		m.mu.Unlock()
 		return nil
 	}
+	if !inst.runAlive() {
+		inst.state = stateStopped
+		m.mu.Unlock()
+		return nil
+	}
+	if inst.state == stateStopping {
+		done := inst.done
+		m.mu.Unlock()
+		return m.waitStop(typ, id, inst, done)
+	}
+
 	inst.state = stateStopping
-	inst.stopping = true
+	cancel := inst.cancel
+	svc := inst.service
+	done := inst.done
 	m.mu.Unlock()
 	emitLog(id, typ, "info", "stopping")
 
-	if inst.cancel != nil {
-		inst.cancel()
+	if cancel != nil {
+		cancel()
 	}
-
 	var closeErr error
-	if inst.service != nil {
-		closeErr = inst.service.Close()
+	if svc != nil {
+		closeErr = svc.Close()
 	}
 
-	select {
-	case <-inst.done:
-	case <-time.After(3 * time.Second):
-		m.mu.Lock()
-		inst.state = stateFailed
-		inst.lastError = "stop timeout"
-		m.mu.Unlock()
-		return newError(ErrStopFailed, "stop %s instance %q timed out", typ, id)
+	if err := m.waitStop(typ, id, inst, done); err != nil {
+		return err
 	}
 	if closeErr != nil {
 		return newError(ErrStopFailed, "stop %s instance %q failed: %v", typ, id, closeErr)
 	}
-
 	return nil
 }
 
-func (m *manager) reload(typ, id, configToml string, validate configValidator, factory serviceFactory) error {
-	if err := validateID(id); err != nil {
-		return err
+func (m *manager) waitStop(typ, id string, inst *instance, done <-chan struct{}) error {
+	if done == nil {
+		return nil
 	}
-
-	key := instanceKey(typ, id)
-
-	m.mu.Lock()
-	old, running := m.instances[key]
-	running = running && old.state != stateStopped && old.state != stateFailed
-	m.mu.Unlock()
-
-	configPath, err := writeConfigTemp(typ+"-"+id+"-reload", configToml)
-	if err != nil {
-		return err
-	}
-
-	if err := validate(configPath); err != nil {
-		removeConfigTemp(configPath)
-		return newError(ErrReloadFailed, "%v", err)
-	}
-	removeConfigTemp(configPath)
-
-	if running {
-		if err := m.stop(typ, id); err != nil {
-			return newError(ErrReloadFailed, "%v", err)
+	select {
+	case <-done:
+		return nil
+	case <-time.After(stopWaitTimeout):
+		m.mu.Lock()
+		if !isDone(inst.done) {
+			inst.state = stateFailed
+			inst.lastError = "stop timeout"
 		}
+		m.mu.Unlock()
+		return newError(ErrStopFailed, "stop %s instance %q timed out", typ, id)
 	}
-
-	if err := m.start(typ, id, configToml, factory); err != nil {
-		return newError(ErrReloadFailed, "%v", err)
-	}
-	emitLog(id, typ, "info", "reloaded by safe restart")
-	return nil
 }
 
 func (m *manager) stopAll() error {
 	m.mu.Lock()
 	items := make([]*instance, 0, len(m.instances))
 	for _, inst := range m.instances {
-		if inst.state != stateStopped && inst.state != stateFailed {
-			items = append(items, inst)
+		if inst.state == stateStopped {
+			continue
 		}
+		if !inst.runAlive() {
+			inst.state = stateStopped
+			continue
+		}
+		items = append(items, inst)
 	}
 	m.mu.Unlock()
 

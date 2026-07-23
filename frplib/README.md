@@ -19,7 +19,7 @@ bash ci/build-frplib.sh
 可选锁定/升级上游 frp：
 
 ```bash
-FRP_VERSION=v0.70.0 bash ci/build-frplib.sh
+FRP_VERSION=v0.70.1 bash ci/build-frplib.sh
 ```
 
 ## 测试

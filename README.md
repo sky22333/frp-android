@@ -129,7 +129,7 @@ bash ci/validate-frplib.sh
 上游 frp 版本锁定在 `frplib/go.mod`。可选升级：
 
 ```bash
-FRP_VERSION=v0.70.0 bash ci/build-frplib.sh
+FRP_VERSION=v0.70.1 bash ci/build-frplib.sh
 ```
 
 详情见 [`frplib/README.md`](frplib/README.md)。

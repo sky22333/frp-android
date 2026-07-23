@@ -379,7 +379,7 @@ private fun ProfileRuntimeCard(
             Row {
                 IconButton(
                     onClick = if (running) onStop else onStart,
-                    enabled = !busy && !stopping,
+                    enabled = !busy,
                 ) {
                     if (busy) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)

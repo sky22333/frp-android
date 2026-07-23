@@ -2,8 +2,12 @@ package frplib
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/fatedier/frp/pkg/config"
+	v1 "github.com/fatedier/frp/pkg/config/v1"
+	"github.com/fatedier/frp/pkg/config/v1/validation"
+	"github.com/fatedier/frp/pkg/policy/security"
 	"github.com/fatedier/frp/server"
 )
 
@@ -32,19 +36,26 @@ func stopServerWithID(id string) error {
 }
 
 func reloadServerWithID(id, configToml string) error {
-	return globalManager.reload(instanceTypeServer, id, configToml, validateServerConfig, newServerService)
-}
+	if err := validateID(id); err != nil {
+		return err
+	}
 
-func validateServerConfig(configPath string) error {
-	common, isLegacyFormat, err := config.LoadServerConfig(configPath, true)
+	configPath, err := writeConfigTemp(instanceTypeServer+"-"+id+"-reload", configToml)
 	if err != nil {
-		return newError(ErrInvalidToml, "parse frps TOML failed: %v", err)
+		return err
 	}
-	if isLegacyFormat {
-		return newError(ErrInvalidToml, "legacy frps config format is not supported")
+
+	loaded, err := loadServer(configPath)
+	if err != nil {
+		removeConfigTemp(configPath)
+		return newError(ErrReloadFailed, "%v", err)
 	}
-	if common == nil {
-		return nil
+
+	if err := globalManager.restart(instanceTypeServer, id, configPath, func() (runningService, error) {
+		return openServerService(loaded)
+	}); err != nil {
+		removeConfigTemp(configPath)
+		return newError(ErrReloadFailed, "%v", err)
 	}
 	return nil
 }
@@ -63,6 +74,24 @@ func (s *serverService) Close() error {
 }
 
 func newServerService(configPath string) (runningService, error) {
+	loaded, err := loadServer(configPath)
+	if err != nil {
+		return nil, err
+	}
+	return openServerService(loaded)
+}
+
+func openServerService(cfg *v1.ServerConfig) (runningService, error) {
+	applyFrpLogger(cfg.Log.To, cfg.Log.Level, int(cfg.Log.MaxDays))
+
+	svc, err := server.NewService(cfg)
+	if err != nil {
+		return nil, newError(ErrStartFailed, "create frps service failed: %v", err)
+	}
+	return &serverService{svc: svc}, nil
+}
+
+func loadServer(configPath string) (*v1.ServerConfig, error) {
 	common, isLegacyFormat, err := config.LoadServerConfig(configPath, true)
 	if err != nil {
 		return nil, newError(ErrInvalidToml, "parse frps TOML failed: %v", err)
@@ -70,11 +99,18 @@ func newServerService(configPath string) (runningService, error) {
 	if isLegacyFormat {
 		return nil, newError(ErrInvalidToml, "legacy frps config format is not supported")
 	}
-
-	svc, err := server.NewService(common)
-	if err != nil {
-		return nil, newError(ErrStartFailed, "create frps service failed: %v", err)
+	if common == nil {
+		return nil, newError(ErrInvalidToml, "frps config is empty")
 	}
 
-	return &serverService{svc: svc}, nil
+	unsafeFeatures := security.NewUnsafeFeatures(nil)
+	validator := validation.NewConfigValidator(unsafeFeatures)
+	warning, err := validator.ValidateServerConfig(common)
+	if warning != nil {
+		emitLog("", instanceTypeServer, "warn", fmt.Sprintf("%v", warning))
+	}
+	if err != nil {
+		return nil, newError(ErrInvalidToml, "%v", err)
+	}
+	return common, nil
 }

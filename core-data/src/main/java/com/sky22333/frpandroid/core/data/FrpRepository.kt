@@ -159,7 +159,8 @@ class FrpRepository(
 
     suspend fun isProfileActive(id: String): Boolean {
         val state = dao.getRuntimeStates().firstOrNull { it.id == id }?.state
-        return state == FrpInstanceStatus.Running || state == FrpInstanceStatus.Stopping || state == FrpInstanceStatus.Failed
+        // Only a live Running instance should use reload-on-save. Failed/Stopping must not.
+        return state == FrpInstanceStatus.Running
     }
 
     suspend fun start(profile: FrpProfile): FrpResult {
@@ -266,7 +267,13 @@ class FrpRepository(
             result.isSuccess || result.isAlreadyRunning -> {
                 dao.upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null).toEntity())
             }
-            result.isInvalidToml || result.isTlsFileMissing -> {
+            result.isTlsFileMissing -> {
+                dao.upsertRuntimeState(
+                    FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Stopped, result.message).toEntity(),
+                )
+            }
+            result.isInvalidToml -> {
+                // Validation-only failure: do not clobber an existing Running row.
                 val current = dao.getRuntimeStates().firstOrNull { it.id == profile.id }
                 if (current == null) {
                     dao.upsertRuntimeState(
@@ -298,7 +305,12 @@ class FrpRepository(
             result.isSuccess || result.isAlreadyRunning -> {
                 dao.upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null).toEntity())
             }
-            result.isInvalidToml || result.isTlsFileMissing -> Unit
+            result.isTlsFileMissing -> {
+                dao.upsertRuntimeState(
+                    FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Stopped, result.message).toEntity(),
+                )
+            }
+            result.isInvalidToml -> Unit
             else -> {
                 dao.upsertRuntimeState(
                     FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Failed, result.message.ifBlank { null }).toEntity(),

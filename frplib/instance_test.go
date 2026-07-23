@@ -110,14 +110,35 @@ func TestReloadValidationFailureKeepsOldInstance(t *testing.T) {
 	factory := func(string) (runningService, error) {
 		return svc, nil
 	}
-	validate := func(string) error {
-		return newError(ErrInvalidToml, "bad config")
-	}
 
 	if err := m.start(instanceTypeClient, "a", "x=1", factory); err != nil {
 		t.Fatalf("start failed: %v", err)
 	}
-	err := m.reload(instanceTypeClient, "a", "bad", validate, factory)
+
+	// Mirror production reloadClientWithID: validate/load before restart.
+	reloadLike := func(validate func(string) error, open func() (runningService, error)) error {
+		configPath, err := writeConfigTemp("client-a-reload", "bad")
+		if err != nil {
+			return err
+		}
+		if err := validate(configPath); err != nil {
+			removeConfigTemp(configPath)
+			return newError(ErrReloadFailed, "%v", err)
+		}
+		if err := m.restart(instanceTypeClient, "a", configPath, open); err != nil {
+			removeConfigTemp(configPath)
+			return newError(ErrReloadFailed, "%v", err)
+		}
+		return nil
+	}
+
+	err := reloadLike(
+		func(string) error { return newError(ErrInvalidToml, "bad config") },
+		func() (runningService, error) {
+			t.Fatal("open must not run when validation fails")
+			return nil, nil
+		},
+	)
 	if err == nil {
 		t.Fatalf("reload should fail")
 	}
@@ -140,20 +161,22 @@ func TestReloadSuccessReplacesInstance(t *testing.T) {
 	m := newManager()
 	oldSvc := newFakeService()
 	newSvc := newFakeService()
-	services := []*fakeService{oldSvc, newSvc}
 	factory := func(string) (runningService, error) {
-		svc := services[0]
-		services = services[1:]
-		return svc, nil
-	}
-	validate := func(string) error {
-		return nil
+		return oldSvc, nil
 	}
 
 	if err := m.start(instanceTypeClient, "a", "x=1", factory); err != nil {
 		t.Fatalf("start failed: %v", err)
 	}
-	if err := m.reload(instanceTypeClient, "a", "x=2", validate, factory); err != nil {
+
+	configPath, err := writeConfigTemp("client-a-reload", "x=2")
+	if err != nil {
+		t.Fatalf("temp config: %v", err)
+	}
+	if err := m.restart(instanceTypeClient, "a", configPath, func() (runningService, error) {
+		return newSvc, nil
+	}); err != nil {
+		removeConfigTemp(configPath)
 		t.Fatalf("reload failed: %v", err)
 	}
 	if !oldSvc.closed {
@@ -299,4 +322,63 @@ func TestInvalidID(t *testing.T) {
 	if err := validateID(""); err == nil {
 		t.Fatalf("empty id should fail")
 	}
+}
+
+func TestStopTimeoutRejectsStartUntilRunExits(t *testing.T) {
+	m := newManager()
+	first := &hangingService{fakeService: newFakeService()}
+	second := newFakeService()
+	services := []runningService{first, second}
+	factory := func(string) (runningService, error) {
+		svc := services[0]
+		services = services[1:]
+		return svc, nil
+	}
+
+	if err := m.start(instanceTypeClient, "a", "x=1", factory); err != nil {
+		t.Fatalf("start failed: %v", err)
+	}
+	err := m.stop(instanceTypeClient, "a")
+	if err == nil || !strings.HasPrefix(err.Error(), ErrStopFailed) {
+		t.Fatalf("expected stop timeout, got %v", err)
+	}
+	if err := m.start(instanceTypeClient, "a", "x=1", factory); err == nil {
+		t.Fatalf("start should be rejected while previous run is alive")
+	} else if !strings.HasPrefix(err.Error(), ErrStartFailed) {
+		t.Fatalf("expected %s, got %q", ErrStartFailed, err.Error())
+	}
+	if len(services) != 1 {
+		t.Fatalf("factory should not have been consumed while previous run alive")
+	}
+
+	first.release()
+	<-first.exited
+
+	if err := m.start(instanceTypeClient, "a", "x=1", factory); err != nil {
+		t.Fatalf("start after previous run exit should succeed: %v", err)
+	}
+	_ = m.stop(instanceTypeClient, "a")
+}
+
+type hangingService struct {
+	*fakeService
+	releaseOnce sync.Once
+}
+
+func (h *hangingService) Run(ctx context.Context) error {
+	defer close(h.exited)
+	// Ignore ctx cancel to simulate an upstream Run that does not exit after Close/cancel.
+	<-h.done
+	return h.runErr
+}
+
+func (h *hangingService) Close() error {
+	h.closed = true
+	return nil
+}
+
+func (h *hangingService) release() {
+	h.releaseOnce.Do(func() {
+		close(h.done)
+	})
 }

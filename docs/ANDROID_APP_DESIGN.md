@@ -95,7 +95,7 @@ frp-android/
 
 ```text
 minSdk: 24
-targetSdk: 36
+targetSdk: 37
 compileSdk: 37
 ```
 
@@ -114,7 +114,7 @@ compileSdk: 37
 
 主要 Android API：
 
-- `Service.startForeground()`、`ContextCompat.startForegroundService()`、`NotificationCompat`：前台服务与持续通知。
+- `ServiceCompat.startForeground(..., FOREGROUND_SERVICE_TYPE_SPECIAL_USE)`、`ContextCompat.startForegroundService()`、`NotificationCompat`：前台服务与持续通知。
 - `ConnectivityManager.NetworkCallback`、`NetworkCapabilities`：网络恢复和 Wi-Fi 默认网络判断。
 - `PowerManager.PARTIAL_WAKE_LOCK`、`WifiManager.WifiLock`：可选息屏保活增强。
 - `BOOT_COMPLETED`、`WorkManager`：开机恢复、失败重试和日志清理。

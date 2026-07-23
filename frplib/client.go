@@ -2,10 +2,16 @@ package frplib
 
 import (
 	"context"
+	"fmt"
+	"path/filepath"
+	"time"
 
 	"github.com/fatedier/frp/client"
 	"github.com/fatedier/frp/pkg/config"
 	"github.com/fatedier/frp/pkg/config/source"
+	"github.com/fatedier/frp/pkg/config/v1/validation"
+	"github.com/fatedier/frp/pkg/policy/featuregate"
+	"github.com/fatedier/frp/pkg/policy/security"
 )
 
 func StartClientWithID(id, configToml string) string {
@@ -33,11 +39,33 @@ func stopClientWithID(id string) error {
 }
 
 func reloadClientWithID(id, configToml string) error {
-	return globalManager.reload(instanceTypeClient, id, configToml, validateClientConfig, newClientService)
+	if err := validateID(id); err != nil {
+		return err
+	}
+
+	configPath, err := writeConfigTemp(instanceTypeClient+"-"+id+"-reload", configToml)
+	if err != nil {
+		return err
+	}
+
+	loaded, err := loadClient(configPath)
+	if err != nil {
+		removeConfigTemp(configPath)
+		return newError(ErrReloadFailed, "%v", err)
+	}
+
+	if err := globalManager.restart(instanceTypeClient, id, configPath, func() (runningService, error) {
+		return openClientService(loaded)
+	}); err != nil {
+		removeConfigTemp(configPath)
+		return newError(ErrReloadFailed, "%v", err)
+	}
+	return nil
 }
 
 type clientService struct {
-	svc *client.Service
+	svc              *client.Service
+	gracefulShutdown time.Duration
 }
 
 func (s *clientService) Run(ctx context.Context) error {
@@ -45,46 +73,100 @@ func (s *clientService) Run(ctx context.Context) error {
 }
 
 func (s *clientService) Close() error {
+	s.svc.GracefulClose(s.gracefulShutdown)
 	return nil
 }
 
-func validateClientConfig(configPath string) error {
-	common, proxies, visitors, isLegacyFormat, err := config.LoadClientConfig(configPath, true)
-	if err != nil {
-		return newError(ErrInvalidToml, "parse frpc TOML failed: %v", err)
-	}
-	if isLegacyFormat {
-		return newError(ErrInvalidToml, "legacy frpc config format is not supported")
-	}
-	if common == nil || proxies == nil || visitors == nil {
-		return nil
-	}
-	return nil
+type loadedClient struct {
+	opts client.ServiceOptions
 }
 
 func newClientService(configPath string) (runningService, error) {
-	common, proxies, visitors, isLegacyFormat, err := config.LoadClientConfig(configPath, true)
+	loaded, err := loadClient(configPath)
 	if err != nil {
-		return nil, newError(ErrInvalidToml, "parse frpc TOML failed: %v", err)
+		return nil, err
 	}
-	if isLegacyFormat {
-		return nil, newError(ErrInvalidToml, "legacy frpc config format is not supported")
-	}
+	return openClientService(loaded)
+}
 
-	configSource := source.NewConfigSource()
-	if err := configSource.ReplaceAll(proxies, visitors); err != nil {
-		return nil, newError(ErrStartFailed, "load frpc config source failed: %v", err)
-	}
-	aggregator := source.NewAggregator(configSource)
+func openClientService(loaded *loadedClient) (runningService, error) {
+	applyFrpLogger(loaded.opts.Common.Log.To, loaded.opts.Common.Log.Level, int(loaded.opts.Common.Log.MaxDays))
 
-	svc, err := client.NewService(client.ServiceOptions{
-		Common:                 common,
-		ConfigFilePath:         configPath,
-		ConfigSourceAggregator: aggregator,
-	})
+	svc, err := client.NewService(loaded.opts)
 	if err != nil {
 		return nil, newError(ErrStartFailed, "create frpc service failed: %v", err)
 	}
 
-	return &clientService{svc: svc}, nil
+	graceful := time.Duration(0)
+	if loaded.opts.Common.Transport.Protocol == "kcp" || loaded.opts.Common.Transport.Protocol == "quic" {
+		graceful = 500 * time.Millisecond
+	}
+	return &clientService{svc: svc, gracefulShutdown: graceful}, nil
+}
+
+func loadClient(configPath string) (*loadedClient, error) {
+	result, err := config.LoadClientConfigResult(configPath, true)
+	if err != nil {
+		return nil, newError(ErrInvalidToml, "parse frpc TOML failed: %v", err)
+	}
+	if result.IsLegacyFormat {
+		return nil, newError(ErrInvalidToml, "legacy frpc config format is not supported")
+	}
+	if result.Common == nil {
+		return nil, newError(ErrInvalidToml, "frpc common config is empty")
+	}
+
+	if len(result.Common.FeatureGates) > 0 {
+		if err := featuregate.SetFromMap(result.Common.FeatureGates); err != nil {
+			return nil, newError(ErrInvalidToml, "featureGates: %v", err)
+		}
+	}
+
+	unsafeFeatures := security.NewUnsafeFeatures(nil)
+
+	configSource := source.NewConfigSource()
+	if err := configSource.ReplaceAll(result.Proxies, result.Visitors); err != nil {
+		return nil, newError(ErrStartFailed, "load frpc config source failed: %v", err)
+	}
+
+	var storeSource *source.StoreSource
+	if result.Common.Store.IsEnabled() {
+		storePath := result.Common.Store.Path
+		if storePath != "" && !filepath.IsAbs(storePath) {
+			storePath = filepath.Join(filepath.Dir(configPath), storePath)
+		}
+		s, err := source.NewStoreSource(source.StoreSourceConfig{Path: storePath})
+		if err != nil {
+			return nil, newError(ErrStartFailed, "create store source failed: %v", err)
+		}
+		storeSource = s
+	}
+
+	aggregator := source.NewAggregator(configSource)
+	if storeSource != nil {
+		aggregator.SetStoreSource(storeSource)
+	}
+
+	proxyCfgs, visitorCfgs, err := aggregator.Load()
+	if err != nil {
+		return nil, newError(ErrInvalidToml, "load config from sources failed: %v", err)
+	}
+	proxyCfgs, visitorCfgs = config.FilterClientConfigurers(result.Common, proxyCfgs, visitorCfgs)
+	proxyCfgs = config.CompleteProxyConfigurers(proxyCfgs)
+	visitorCfgs = config.CompleteVisitorConfigurers(visitorCfgs)
+
+	warning, err := validation.ValidateAllClientConfig(result.Common, proxyCfgs, visitorCfgs, unsafeFeatures)
+	if warning != nil {
+		emitLog("", instanceTypeClient, "warn", fmt.Sprintf("%v", warning))
+	}
+	if err != nil {
+		return nil, newError(ErrInvalidToml, "%v", err)
+	}
+
+	return &loadedClient{opts: client.ServiceOptions{
+		Common:                 result.Common,
+		ConfigFilePath:         configPath,
+		ConfigSourceAggregator: aggregator,
+		UnsafeFeatures:         unsafeFeatures,
+	}}, nil
 }

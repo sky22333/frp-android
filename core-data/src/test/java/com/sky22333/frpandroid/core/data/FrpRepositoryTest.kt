@@ -464,7 +464,7 @@ class FrpRepositoryTest {
     }
 
     @Test
-    fun missingManagedTlsFileDoesNotOverwriteRunningStateOnReload() = runTest {
+    fun missingManagedTlsFileMarksStoppedOnReload() = runTest {
         val filesDir = File("build/test-files/tls-reload-missing").apply { deleteRecursively() }
         val missingPath = File(filesDir, "certificates/${profile.id}/ca.pem").absolutePath
         val dao = FakeFrpDao().apply {
@@ -478,8 +478,25 @@ class FrpRepositoryTest {
 
         assertEquals("TLS_FILE_MISSING", result.code)
         assertEquals(0, runtime.reloadCalls)
-        assertEquals(FrpInstanceStatus.Running, dao.runtimeState(profile.id)?.state)
-        assertNull(dao.runtimeState(profile.id)?.lastError)
+        assertEquals(FrpInstanceStatus.Stopped, dao.runtimeState(profile.id)?.state)
+        assertEquals("TLS_FILE_MISSING: $missingPath", dao.runtimeState(profile.id)?.lastError)
+    }
+
+    @Test
+    fun saveAndRestartFailedProfileSavesWithoutReload() = runTest {
+        val dao = FakeFrpDao().apply {
+            upsertProfile(profile.toEntity())
+            upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Failed, "boom").toEntity())
+        }
+        val runtime = FakeRuntime()
+        val repository = repository(dao, runtime)
+        val updated = profile.copy(name = "updated")
+
+        val result = repository.saveAndRestart(updated)
+
+        assertTrue(result.isSuccess)
+        assertEquals(0, runtime.reloadCalls)
+        assertEquals("updated", dao.getProfile(profile.id)?.name)
     }
 
     private fun TestScope.repository(

@@ -9,6 +9,8 @@ core-*/build/
 feature-*/build/
 *.apk
 *.aab
+.tools/
 app/libs/frplib-universal.aar
+app/libs/frplib-universal-sources.jar
 frplib/dist/
 gradle/gradle-daemon-jvm.properties

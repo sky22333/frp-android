@@ -40,6 +40,14 @@ class FrpRuntimePolicyTest {
     }
 
     @Test
+    fun tlsFileMissingIsNotRetried() {
+        val result = FrpResult.fromRaw("TLS_FILE_MISSING: /data/ca.pem")
+
+        assertFalse(FrpRuntimePolicy.isStartSatisfied(result))
+        assertFalse(FrpRuntimePolicy.shouldRetryStart(result, autoRetryEnabled = true))
+    }
+
+    @Test
     fun startFailureIsRetriedOnlyWhenAutoRetryEnabled() {
         val result = FrpResult.fromRaw("START_FAILED: network unavailable")
 

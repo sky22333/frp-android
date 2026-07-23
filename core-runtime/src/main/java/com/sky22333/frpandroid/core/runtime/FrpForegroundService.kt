@@ -6,12 +6,11 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -58,16 +57,18 @@ class FrpForegroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START_PROFILE -> {
-                val id = intent.getStringExtra(EXTRA_PROFILE_ID)
-                if (id != null) startProfile(id)
+                val id = intent.getStringExtra(EXTRA_PROFILE_ID) ?: return START_NOT_STICKY
+                if (!promoteToForegroundOrAbort()) return START_NOT_STICKY
+                startProfile(id)
             }
             ACTION_RECOVER_PROFILE -> {
-                val id = intent.getStringExtra(EXTRA_PROFILE_ID)
+                val id = intent.getStringExtra(EXTRA_PROFILE_ID) ?: return START_NOT_STICKY
                 val attempt = intent.getIntExtra(EXTRA_RECOVERY_ATTEMPT, 0)
                 val reason = intent.getStringExtra(EXTRA_RECOVERY_REASON)?.let { value ->
                     runCatching { RecoveryReason.valueOf(value) }.getOrNull()
-                }
-                if (id != null && reason != null) recoverProfile(id, attempt, reason)
+                } ?: return START_NOT_STICKY
+                if (!promoteToForegroundOrAbort()) return START_NOT_STICKY
+                recoverProfile(id, attempt, reason)
             }
             ACTION_STOP_PROFILE -> {
                 val id = intent.getStringExtra(EXTRA_PROFILE_ID)
@@ -75,7 +76,17 @@ class FrpForegroundService : Service() {
             }
             ACTION_STOP_ALL -> stopAll()
             ACTION_SYNC -> syncOnly()
-            else -> recoverKnownProfiles()
+            ACTION_MARK_PENDING_START -> {
+                scope.launch {
+                    repository.setPendingStart(true)
+                    stopSelf()
+                }
+            }
+            else -> {
+                // START_STICKY restart / unknown: promote first if we still need FGS recovery.
+                if (!promoteToForegroundOrAbort()) return START_NOT_STICKY
+                recoverKnownProfiles()
+            }
         }
         return START_STICKY
     }
@@ -90,12 +101,6 @@ class FrpForegroundService : Service() {
 
     private fun startProfile(id: String) {
         scope.launch {
-            if (!hasNotificationPermission()) {
-                repository.setPendingStart(true)
-                stopSelf()
-                return@launch
-            }
-            startForeground(NOTIFICATION_ID, buildNotification(runningCount = 1))
             FrpRetryWorker.cancel(this@FrpForegroundService, id)
             repository.getProfile(id)?.let { profile ->
                 val result = repository.start(profile)
@@ -118,13 +123,6 @@ class FrpForegroundService : Service() {
 
     private fun recoverProfile(id: String, attempt: Int, reason: RecoveryReason) {
         scope.launch {
-            if (!hasNotificationPermission()) {
-                repository.setPendingStart(true)
-                FrpRetryWorker.cancel(this@FrpForegroundService, id)
-                stopSelf()
-                return@launch
-            }
-            startForeground(NOTIFICATION_ID, buildNotification(runningCount = 1))
             val result = repository.recoverProfile(id)
             if (result == null || FrpRuntimePolicy.isStartSatisfied(result)) {
                 FrpRetryWorker.cancel(this@FrpForegroundService, id)
@@ -377,9 +375,28 @@ class FrpForegroundService : Service() {
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
-    private fun hasNotificationPermission(): Boolean =
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    private fun promoteToForegroundOrAbort(): Boolean {
+        // Must run before returning from onStartCommand when started via startForegroundService.
+        promoteToForeground()
+        if (!FrpRuntimePermissions.hasNotificationPermission(this)) {
+            scope.launch {
+                repository.setPendingStart(true)
+                ServiceCompat.stopForeground(this@FrpForegroundService, ServiceCompat.STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            }
+            return false
+        }
+        return true
+    }
+
+    private fun promoteToForeground() {
+        ServiceCompat.startForeground(
+            this,
+            NOTIFICATION_ID,
+            buildNotification(runningCount = 1),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+        )
+    }
 
     private fun pendingIntentFlags(): Int =
         PendingIntent.FLAG_UPDATE_CURRENT or
@@ -393,6 +410,7 @@ class FrpForegroundService : Service() {
         const val ACTION_STOP_PROFILE = "com.sky22333.frpandroid.STOP_PROFILE"
         const val ACTION_STOP_ALL = "com.sky22333.frpandroid.STOP_ALL"
         const val ACTION_SYNC = "com.sky22333.frpandroid.SYNC"
+        const val ACTION_MARK_PENDING_START = "com.sky22333.frpandroid.MARK_PENDING_START"
         const val EXTRA_PROFILE_ID = "profile_id"
         const val EXTRA_RECOVERY_ATTEMPT = "recovery_attempt"
         const val EXTRA_RECOVERY_REASON = "recovery_reason"
@@ -403,7 +421,7 @@ class FrpForegroundService : Service() {
             val intent = Intent(context, FrpForegroundService::class.java)
                 .setAction(ACTION_START_PROFILE)
                 .putExtra(EXTRA_PROFILE_ID, profileId)
-            ContextCompat.startForegroundService(context, intent)
+            startRuntimeService(context, intent)
         }
 
         fun recoverProfile(context: Context, profileId: String, attempt: Int, reason: RecoveryReason) {
@@ -412,7 +430,7 @@ class FrpForegroundService : Service() {
                 .putExtra(EXTRA_PROFILE_ID, profileId)
                 .putExtra(EXTRA_RECOVERY_ATTEMPT, attempt)
                 .putExtra(EXTRA_RECOVERY_REASON, reason.name)
-            ContextCompat.startForegroundService(context, intent)
+            startRuntimeService(context, intent)
         }
 
         fun stopProfile(context: Context, profileId: String) {
@@ -429,6 +447,16 @@ class FrpForegroundService : Service() {
 
         fun sync(context: Context) {
             context.startService(Intent(context, FrpForegroundService::class.java).setAction(ACTION_SYNC))
+        }
+
+        private fun startRuntimeService(context: Context, intent: Intent) {
+            if (!FrpRuntimePermissions.hasNotificationPermission(context)) {
+                context.startService(
+                    Intent(context, FrpForegroundService::class.java).setAction(ACTION_MARK_PENDING_START),
+                )
+                return
+            }
+            ContextCompat.startForegroundService(context, intent)
         }
     }
 }

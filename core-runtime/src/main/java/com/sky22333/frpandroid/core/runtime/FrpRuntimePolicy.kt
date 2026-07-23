@@ -10,7 +10,8 @@ internal object FrpRuntimePolicy {
         autoRetryEnabled &&
             !isStartSatisfied(result) &&
             !result.isInvalidToml &&
-            !result.isInvalidTempDir
+            !result.isInvalidTempDir &&
+            !result.isTlsFileMissing
 
     fun shouldHoldScreenOffKeepAlive(enabled: Boolean, screenOff: Boolean, hasActiveInstances: Boolean): Boolean =
         enabled && screenOff && hasActiveInstances
