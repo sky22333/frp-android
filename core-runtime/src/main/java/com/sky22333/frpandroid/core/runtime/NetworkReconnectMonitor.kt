@@ -39,7 +39,7 @@ class NetworkReconnectMonitor private constructor(
             lastReconnectAt = now
             val repository = AppGraph.repository(context)
             if (!repository.shouldReconnectOnNetworkRecovery()) return
-            repository.getNetworkRecoverableProfiles().forEach { profile ->
+            repository.getDesiredRunningProfiles().forEach { profile ->
                 runCatching {
                     FrpForegroundService.recoverProfile(context, profile.id, attempt = 0, reason = RecoveryReason.Network)
                 }.onFailure {

@@ -322,6 +322,59 @@ class FrpRepositoryTest {
     }
 
     @Test
+    fun syncRuntimeStatesPreservesDesiredRunning() = runTest {
+        val dao = FakeFrpDao().apply {
+            upsertRuntimeState(
+                FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null)
+                    .toEntity(desiredRunning = true),
+            )
+        }
+        val runtime = FakeRuntime(listInstancesResult = emptyList())
+        val repository = repository(dao, runtime)
+
+        repository.syncRuntimeStates()
+
+        assertEquals(FrpInstanceStatus.Stopped, dao.runtimeState(profile.id)?.state)
+        assertTrue(dao.runtimeState(profile.id)?.desiredRunning == true)
+    }
+
+    @Test
+    fun syncRuntimeStatesDoesNotInferDesiredFromObservedRunning() = runTest {
+        val dao = FakeFrpDao()
+        val runtime = FakeRuntime(
+            listInstancesResult = listOf(
+                FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null),
+            ),
+        )
+        val repository = repository(dao, runtime)
+
+        repository.syncRuntimeStates()
+
+        assertEquals(FrpInstanceStatus.Running, dao.runtimeState(profile.id)?.state)
+        assertTrue(dao.runtimeState(profile.id)?.desiredRunning == false)
+    }
+
+    @Test
+    fun restoreDesiredProfilesRestartsAfterObservedStopped() = runTest {
+        val dao = FakeFrpDao().apply {
+            upsertProfile(profile.toEntity())
+            upsertRuntimeState(
+                FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null)
+                    .toEntity(desiredRunning = true),
+            )
+        }
+        val runtime = FakeRuntime(listInstancesResult = emptyList())
+        val repository = repository(dao, runtime)
+
+        val count = repository.restoreDesiredProfiles()
+
+        assertEquals(1, count)
+        assertEquals(1, runtime.startCalls)
+        assertEquals(FrpInstanceStatus.Running, dao.runtimeState(profile.id)?.state)
+        assertTrue(dao.runtimeState(profile.id)?.desiredRunning == true)
+    }
+
+    @Test
     fun recoverProfileDoesNotStartStoppedProfile() = runTest {
         val dao = FakeFrpDao().apply {
             upsertProfile(profile.toEntity())
@@ -337,10 +390,13 @@ class FrpRepositoryTest {
     }
 
     @Test
-    fun recoverProfileStartsRunningProfile() = runTest {
+    fun recoverProfileStartsDesiredProfileEvenIfObservedStopped() = runTest {
         val dao = FakeFrpDao().apply {
             upsertProfile(profile.toEntity())
-            upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null).toEntity())
+            upsertRuntimeState(
+                FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Stopped, null)
+                    .toEntity(desiredRunning = true),
+            )
         }
         val runtime = FakeRuntime()
         val repository = repository(dao, runtime)
@@ -352,16 +408,39 @@ class FrpRepositoryTest {
     }
 
     @Test
-    fun networkRecoveryDoesNotRestartStoppingProfiles() = runTest {
+    fun networkRecoverySkipsProfilesWithoutDesiredRunning() = runTest {
         val dao = FakeFrpDao().apply {
             upsertProfile(profile.toEntity())
-            upsertRuntimeState(FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Stopping, null).toEntity())
+            upsertRuntimeState(
+                FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Stopping, null)
+                    .toEntity(desiredRunning = false),
+            )
         }
         val repository = repository(dao, FakeRuntime())
 
-        val profiles = repository.getNetworkRecoverableProfiles()
+        val profiles = repository.getDesiredRunningProfiles()
 
         assertTrue(profiles.isEmpty())
+    }
+
+    @Test
+    fun stopClearsDesiredRunning() = runTest {
+        val dao = FakeFrpDao().apply {
+            upsertProfile(profile.toEntity())
+            upsertRuntimeState(
+                FrpRuntimeState(profile.id, profile.type, FrpInstanceStatus.Running, null)
+                    .toEntity(desiredRunning = true),
+            )
+        }
+        val runtime = FakeRuntime(
+            stopResult = FrpResult(code = null, message = ""),
+            listInstancesResult = emptyList(),
+        )
+        val repository = repository(dao, runtime)
+
+        repository.stop(profile)
+
+        assertTrue(dao.runtimeState(profile.id)?.desiredRunning == false)
     }
 
     @Test
@@ -622,6 +701,8 @@ private class FakeFrpDao(
 
     override fun observeRuntimeStates(): Flow<List<FrpRuntimeStateEntity>> = flowOf(states.values.toList())
     override suspend fun getRuntimeStates(): List<FrpRuntimeStateEntity> = states.values.toList()
+    override suspend fun getDesiredRunningStates(): List<FrpRuntimeStateEntity> =
+        states.values.filter { it.desiredRunning }
     override suspend fun upsertRuntimeState(state: FrpRuntimeStateEntity) {
         states[state.id] = state
     }

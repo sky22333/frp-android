@@ -8,8 +8,8 @@ import com.sky22333.frpandroid.core.runtime.NetworkReconnectMonitor
 class FrpAndroidApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        // Align Room runtime_states with native after process death (clears stale Stopping/Running).
-        FrpForegroundService.sync(this)
+        // After process death: restore profiles with desiredRunning=true.
+        FrpForegroundService.restoreDesired(this)
         LogCleanupWorker.schedule(this)
         NetworkReconnectMonitor.start(this)
     }

@@ -38,6 +38,8 @@ data class FrpRuntimeStateEntity(
     val type: FrpType,
     val state: FrpInstanceStatus,
     val lastError: String?,
+    /** 是否仍应保持运行（仅由 start/stop 写入，不由 sync 推断）。 */
+    val desiredRunning: Boolean = false,
 ) {
     fun toModel(): FrpRuntimeState = FrpRuntimeState(id, type, state, lastError)
 }
@@ -98,6 +100,9 @@ interface FrpDao {
 
     @Query("SELECT * FROM runtime_states")
     suspend fun getRuntimeStates(): List<FrpRuntimeStateEntity>
+
+    @Query("SELECT * FROM runtime_states WHERE desiredRunning = 1")
+    suspend fun getDesiredRunningStates(): List<FrpRuntimeStateEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertRuntimeState(state: FrpRuntimeStateEntity)
@@ -175,8 +180,8 @@ abstract class FrpDatabase : RoomDatabase() {
 fun FrpProfile.toEntity(): FrpProfileEntity =
     FrpProfileEntity(id, name, type, toml, autoStart, updatedAt)
 
-fun FrpRuntimeState.toEntity(): FrpRuntimeStateEntity =
-    FrpRuntimeStateEntity(id, type, state, lastError)
+fun FrpRuntimeState.toEntity(desiredRunning: Boolean = false): FrpRuntimeStateEntity =
+    FrpRuntimeStateEntity(id, type, state, lastError, desiredRunning)
 
 fun FrpLog.toEntity(): FrpLogEntity =
     FrpLogEntity(uid = uid, instanceId = instanceId, type = type, level = level, message = message, time = time)

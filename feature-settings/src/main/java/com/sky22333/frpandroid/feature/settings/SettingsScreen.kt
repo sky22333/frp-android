@@ -114,7 +114,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
     fun recoverPendingStart(context: Context) = viewModelScope.launch {
-        val recoverableProfiles = repository.getNetworkRecoverableProfiles()
+        val recoverableProfiles = repository.getDesiredRunningProfiles()
         val profiles = if (recoverableProfiles.isNotEmpty()) recoverableProfiles else repository.getAutoStartProfiles()
         profiles.forEach { profile ->
             FrpForegroundService.startProfile(context, profile.id)

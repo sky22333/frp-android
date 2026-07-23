@@ -80,7 +80,10 @@ class FrpForegroundService : Service() {
                 if (id != null) stopProfile(id)
             }
             ACTION_STOP_ALL -> stopAll()
-            ACTION_SYNC -> syncOnly()
+            ACTION_RESTORE_DESIRED -> {
+                if (!promoteToForegroundOrAbort()) return START_NOT_STICKY
+                restoreDesired()
+            }
             ACTION_MARK_PENDING_START -> {
                 scope.launch {
                     repository.setPendingStart(true)
@@ -88,9 +91,8 @@ class FrpForegroundService : Service() {
                 }
             }
             else -> {
-                // START_STICKY restart / unknown: promote first if we still need FGS recovery.
                 if (!promoteToForegroundOrAbort()) return START_NOT_STICKY
-                recoverKnownProfiles()
+                restoreDesired()
             }
         }
         return START_STICKY
@@ -189,23 +191,10 @@ class FrpForegroundService : Service() {
         }
     }
 
-    private fun syncOnly() {
+    private fun restoreDesired() {
         scope.launch {
-            repository.initialize()
+            repository.restoreDesiredProfiles()
             refreshNotificationOrStop()
-        }
-    }
-
-    private fun recoverKnownProfiles() {
-        scope.launch {
-            val profiles = repository.getNetworkRecoverableProfiles()
-            if (profiles.isEmpty()) {
-                refreshNotificationOrStop()
-                return@launch
-            }
-            profiles.forEach { profile ->
-                recoverProfile(profile.id, attempt = 0, reason = RecoveryReason.Network)
-            }
         }
     }
 
@@ -441,7 +430,7 @@ class FrpForegroundService : Service() {
         const val ACTION_RECOVER_PROFILE = "com.sky22333.frpandroid.RECOVER_PROFILE"
         const val ACTION_STOP_PROFILE = "com.sky22333.frpandroid.STOP_PROFILE"
         const val ACTION_STOP_ALL = "com.sky22333.frpandroid.STOP_ALL"
-        const val ACTION_SYNC = "com.sky22333.frpandroid.SYNC"
+        const val ACTION_RESTORE_DESIRED = "com.sky22333.frpandroid.RESTORE_DESIRED"
         const val ACTION_MARK_PENDING_START = "com.sky22333.frpandroid.MARK_PENDING_START"
         const val EXTRA_PROFILE_ID = "profile_id"
         const val EXTRA_RECOVERY_ATTEMPT = "recovery_attempt"
@@ -484,8 +473,11 @@ class FrpForegroundService : Service() {
             context.startService(Intent(context, FrpForegroundService::class.java).setAction(ACTION_STOP_ALL))
         }
 
-        fun sync(context: Context) {
-            context.startService(Intent(context, FrpForegroundService::class.java).setAction(ACTION_SYNC))
+        fun restoreDesired(context: Context) {
+            startRuntimeService(
+                context,
+                Intent(context, FrpForegroundService::class.java).setAction(ACTION_RESTORE_DESIRED),
+            )
         }
 
         private fun startRuntimeService(context: Context, intent: Intent) {
