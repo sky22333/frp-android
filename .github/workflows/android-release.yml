@@ -35,9 +35,9 @@ jobs:
           java-version: 21
 
       - name: 安装 Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
-          go-version: stable
+          go-version-file: 'frplib/go.sum'
           cache-dependency-path: frplib/go.sum
 
       - name: 安装 Android SDK
@@ -64,7 +64,7 @@ jobs:
         run: bash ci/validate-frplib.sh
 
       - name: 配置 Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: 9.4.1
 
