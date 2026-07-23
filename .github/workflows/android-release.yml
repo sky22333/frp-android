@@ -9,7 +9,7 @@ on:
         default: v0.0.1
         type: string
       frp_version:
-        description: 可选，覆盖上游 frp 版本（留空则使用 frplib/go.mod 锁定版本）
+        description: 可选，覆盖上游 frp 版本（留空使用frplib/go.mod）
         required: false
         default: ""
         type: string
