@@ -46,6 +46,7 @@ import com.sky22333.frpandroid.core.frp.FrpType
 import com.sky22333.frpandroid.core.runtime.FrpRetryWorker
 import com.sky22333.frpandroid.core.ui.ErrorText
 import com.sky22333.frpandroid.core.ui.FrpListRow
+import com.sky22333.frpandroid.core.ui.profileCardSharedBounds
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -179,6 +180,7 @@ fun ProfilesScreen(
                 FrpListRow(
                     modifier = Modifier
                         .padding(horizontal = 16.dp)
+                        .profileCardSharedBounds(profile.id)
                         .clickable(enabled = !busy) { onEditProfile(profile.id) },
                     icon = if (profile.type == FrpType.Client) Icons.Rounded.CloudSync else Icons.Rounded.Dns,
                     title = profile.name,

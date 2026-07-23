@@ -9,6 +9,10 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.automirrored.rounded.Article
@@ -26,6 +30,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -50,6 +55,8 @@ import com.sky22333.frpandroid.core.data.AppGraph
 import com.sky22333.frpandroid.core.data.FrpSettings
 import com.sky22333.frpandroid.core.runtime.FrpForegroundService
 import com.sky22333.frpandroid.core.ui.FrpAndroidTheme
+import com.sky22333.frpandroid.core.ui.LocalNavAnimatedVisibilityScope
+import com.sky22333.frpandroid.core.ui.LocalSharedTransitionScope
 import com.sky22333.frpandroid.feature.dashboard.DashboardScreen
 import com.sky22333.frpandroid.feature.editor.EditorScreen
 import com.sky22333.frpandroid.feature.logs.LogsScreen
@@ -117,10 +124,13 @@ private tailrec fun Context.findActivity(): ComponentActivity? =
         else -> null
     }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 private fun FrpApp(startDestination: String?) {
     val navController = rememberNavController()
+    val backStack by navController.currentBackStackEntryAsState()
+    val currentRoute = backStack?.destination?.route
+    val showBottomBar = Screen.topLevel.any { it.route == currentRoute }
     LaunchedEffect(startDestination) {
         if (startDestination == FrpForegroundService.DESTINATION_LOGS) {
             navController.navigate(Screen.Logs.route) {
@@ -139,18 +149,30 @@ private fun FrpApp(startDestination: String?) {
                 ),
             )
         },
-        bottomBar = { BottomNavigation(navController) },
+        bottomBar = {
+            if (showBottomBar) {
+                BottomNavigation(navController)
+            }
+        },
     ) { padding ->
-        NavHost(
-            navController = navController,
-            startDestination = if (startDestination == FrpForegroundService.DESTINATION_LOGS) {
-                Screen.Logs.route
-            } else {
-                Screen.Dashboard.route
-            },
-            modifier = Modifier.fillMaxSize().padding(padding),
-        ) {
-            frpGraph(navController)
+        SharedTransitionLayout(modifier = Modifier.fillMaxSize().padding(padding)) {
+            CompositionLocalProvider(LocalSharedTransitionScope provides this) {
+                NavHost(
+                    navController = navController,
+                    startDestination = if (startDestination == FrpForegroundService.DESTINATION_LOGS) {
+                        Screen.Logs.route
+                    } else {
+                        Screen.Dashboard.route
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                    enterTransition = { EnterTransition.None },
+                    exitTransition = { ExitTransition.None },
+                    popEnterTransition = { EnterTransition.None },
+                    popExitTransition = { ExitTransition.None },
+                ) {
+                    frpGraph(navController)
+                }
+            }
         }
     }
 }
@@ -160,7 +182,9 @@ private fun NavGraphBuilder.frpGraph(navController: NavHostController) {
         DashboardScreen()
     }
     composable(Screen.Profiles.route) {
-        ProfilesScreen(onEditProfile = { id -> navController.navigate("editor/$id") })
+        CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
+            ProfilesScreen(onEditProfile = { id -> navController.navigate("editor/$id") })
+        }
     }
     composable(Screen.Logs.route) {
         LogsScreen()
@@ -170,7 +194,9 @@ private fun NavGraphBuilder.frpGraph(navController: NavHostController) {
         SettingsScreen(onLanguageChanged = { context.findActivity()?.recreate() })
     }
     composable("editor/{profileId}") { backStackEntry ->
-        EditorScreen(profileId = backStackEntry.arguments?.getString("profileId").orEmpty())
+        CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
+            EditorScreen(profileId = backStackEntry.arguments?.getString("profileId").orEmpty())
+        }
     }
 }
 

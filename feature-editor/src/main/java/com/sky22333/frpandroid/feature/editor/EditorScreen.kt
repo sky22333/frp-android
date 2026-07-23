@@ -7,6 +7,10 @@ import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -46,6 +50,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -59,6 +64,8 @@ import com.sky22333.frpandroid.core.frp.FrpProfile
 import com.sky22333.frpandroid.core.runtime.FrpForegroundService
 import com.sky22333.frpandroid.core.runtime.FrpRuntimePermissions
 import com.sky22333.frpandroid.core.ui.ErrorText
+import com.sky22333.frpandroid.core.ui.ProfileCardTransformMs
+import com.sky22333.frpandroid.core.ui.profileCardSharedBounds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -257,14 +264,35 @@ fun EditorScreen(
         }
     }
 
-    if (state.profile == null) {
-        Text(stringResource(R.string.editor_profile_missing), modifier = Modifier.padding(16.dp))
-        return
+    var contentReady by remember(profileId) { mutableStateOf(false) }
+    LaunchedEffect(profileId) { contentReady = false }
+    LaunchedEffect(state.profile?.id) {
+        contentReady = state.profile != null
     }
+    val contentAlpha by animateFloatAsState(
+        targetValue = if (contentReady) 1f else 0f,
+        animationSpec = tween(durationMillis = ProfileCardTransformMs, easing = FastOutSlowInEasing),
+        label = "editorContentFade",
+    )
 
-    Box(Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        // 只共享外壳；矩形底与 Scaffold/overlay 落点一致，避免结束闪一下
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .profileCardSharedBounds(profileId)
+                .background(MaterialTheme.colorScheme.background),
+        )
+        if (state.profile == null) {
+            Text(stringResource(R.string.editor_profile_missing), modifier = Modifier.padding(16.dp))
+            return@Box
+        }
+
         Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+                .graphicsLayer { alpha = contentAlpha },
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             OutlinedTextField(
